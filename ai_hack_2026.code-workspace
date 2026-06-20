@@ -1,0 +1,35 @@
+{
+  // Multi-root workspace. Open this file (File > Open Workspace from File...)
+  // instead of opening the repo as a plain folder.
+  //
+  // Why: the repo mixes a Flutter/Dart app (root) with Deno edge functions
+  // (supabase/functions) and a Deno dev tool (tools/dev-email-auth-hook).
+  // The Deno language server must be scoped to ONLY the Deno folders, otherwise
+  // it fights the Dart analyzer at the root. Listing the Deno dirs as their own
+  // workspace folders lets their local .vscode/settings.json enable Deno there
+  // and nowhere else.
+  "folders": [
+    {
+      "name": "ROOT (flutter)",
+      "path": "."
+    },
+    {
+      "name": "supabase-functions (deno)",
+      "path": "./supabase/functions"
+    },
+    {
+      "name": "dev-email-auth-hook (deno)",
+      "path": "./tools/dev-email-auth-hook"
+    }
+  ],
+  "settings": {
+    // Keep the Deno server off at the root so Dart/Flutter is untouched.
+    "deno.enable": false,
+    // Hide the Deno folders from the ROOT tree so they only appear once
+    // (under their own dedicated, Deno-enabled workspace folders above).
+    "files.exclude": {
+      "supabase/functions/": true,
+      "tools/dev-email-auth-hook/": true
+    }
+  }
+}
