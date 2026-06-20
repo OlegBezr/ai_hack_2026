@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
 import '../deepgram/deepgram_service.dart';
@@ -150,9 +149,10 @@ class _SpeechToTextPanelState extends State<_SpeechToTextPanel> {
         setState(() => _error = 'Microphone permission denied.');
         return;
       }
-      // WAV/linear16 so the content-type we send Deepgram is honest.
-      final dir = await getTemporaryDirectory();
-      final path = '${dir.path}/deepgram_clip.wav';
+      // WAV/linear16 so the content-type we send Deepgram is honest. The
+      // target path is platform-specific (a real temp file on native, an
+      // ignored hint on web — `record` hands back a blob URL there).
+      final path = await recordingTargetPath();
       await widget.recorder.start(
         const RecordConfig(
           encoder: AudioEncoder.wav,
@@ -303,13 +303,9 @@ class _TextToSpeechPanelState extends State<_TextToSpeechPanel> {
       await widget.player.stop();
       final bytes = await widget.deepgram.speak(text);
 
-      // just_audio plays from a file/URL, not raw bytes — stage the MP3 in a
-      // temp file and point the player at it.
-      final dir = await getTemporaryDirectory();
-      final file = '${dir.path}/deepgram_tts.mp3';
-      await writeRecordingBytes(file, bytes);
-
-      await widget.player.setFilePath(file);
+      // just_audio plays from a file/URL, not raw bytes. Staging is
+      // platform-specific: a temp file on native, a base64 data URL on web.
+      await playAudioBytes(widget.player, bytes);
       await widget.player.play();
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
