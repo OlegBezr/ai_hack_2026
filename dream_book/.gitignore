@@ -1,3 +1,6 @@
+# Secrets — never commit (bundled as a Flutter asset, contains live tokens)
+.env
+
 # Miscellaneous
 *.class
 *.log

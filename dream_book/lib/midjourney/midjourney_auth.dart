@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:http/http.dart' as http;
@@ -56,6 +57,34 @@ class MidjourneyAuth {
       scope: scope,
     );
     return auth;
+  }
+
+  /// Build from a bundled `.env` (loaded via flutter_dotenv). Call
+  /// `await dotenv.load(fileName: ".env")` in main() before constructing.
+  ///
+  /// Expected keys: MJ_ACCESS_TOKEN, MJ_REFRESH_TOKEN, MJ_CLIENT_ID.
+  /// Falls back to interactive OAuth if any are missing.
+  ///
+  /// Note: a `.env`-seeded refresh token is single-use — after the first
+  /// in-app refresh the live token lives in secure storage and the `.env`
+  /// value is stale. Re-seed only matters on a fresh install / cleared storage.
+  factory MidjourneyAuth.fromDotenv({
+    http.Client? httpClient,
+    FlutterSecureStorage? storage,
+  }) {
+    final at = dotenv.maybeGet('MJ_ACCESS_TOKEN') ?? '';
+    final rt = dotenv.maybeGet('MJ_REFRESH_TOKEN') ?? '';
+    final cid = dotenv.maybeGet('MJ_CLIENT_ID') ?? '';
+    if (at.isEmpty || rt.isEmpty || cid.isEmpty) {
+      return MidjourneyAuth(httpClient: httpClient, storage: storage);
+    }
+    return MidjourneyAuth.withTokens(
+      accessToken: at,
+      refreshToken: rt,
+      clientId: cid,
+      httpClient: httpClient,
+      storage: storage,
+    );
   }
 
   /// Build from `--dart-define`s so secrets stay out of source control:

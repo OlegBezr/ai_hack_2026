@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'book/book_reader_page.dart';
 import 'midjourney/midjourney_auth.dart';
 import 'midjourney/midjourney_client.dart';
 import 'midjourney/midjourney_models.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Loads bundled dream_book/.env (MJ_ACCESS_TOKEN / MJ_REFRESH_TOKEN /
+  // MJ_CLIENT_ID). isOptional => app still runs (interactive OAuth) if absent.
+  await dotenv.load(fileName: '.env', isOptional: true);
   runApp(const MainApp());
 }
 
@@ -33,7 +38,7 @@ class MidjourneyDemoPage extends StatefulWidget {
 
 class _MidjourneyDemoPageState extends State<MidjourneyDemoPage> {
   late final MidjourneyClient _client =
-      MidjourneyClient(auth: MidjourneyAuth());
+      MidjourneyClient(auth: MidjourneyAuth.fromDotenv());
   final _controller = TextEditingController(text: 'a big dragon --ar 16:9');
 
   bool _loading = false;
