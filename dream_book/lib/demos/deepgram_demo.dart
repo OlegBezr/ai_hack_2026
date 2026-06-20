@@ -124,6 +124,7 @@ class _SpeechToTextPanel extends StatefulWidget {
 }
 
 class _SpeechToTextPanelState extends State<_SpeechToTextPanel> {
+  bool _starting = false;
   bool _recording = false;
   bool _transcribing = false;
   String? _error;
@@ -131,7 +132,9 @@ class _SpeechToTextPanelState extends State<_SpeechToTextPanel> {
 
   /// Toggle recording. Stopping kicks off the Deepgram transcription.
   Future<void> _toggle() async {
-    if (_transcribing) return;
+    // Ignore taps while the mic is still spinning up or a transcript is in
+    // flight, so we don't fire overlapping start/stop calls.
+    if (_transcribing || _starting) return;
     if (_recording) {
       await _stopAndTranscribe();
     } else {
@@ -140,30 +143,43 @@ class _SpeechToTextPanelState extends State<_SpeechToTextPanel> {
   }
 
   Future<void> _start() async {
+    // Flip to a visible "starting" state immediately. On web the WAV encoder
+    // has to spin up an AudioWorklet + getUserMedia before capture is live,
+    // which takes a beat — without this the UI looks frozen and the user starts
+    // talking before recording actually begins.
     setState(() {
       _error = null;
       _transcript = null;
+      _starting = true;
     });
     try {
       if (!await widget.recorder.hasPermission()) {
-        setState(() => _error = 'Microphone permission denied.');
+        if (mounted) {
+          setState(() {
+            _error = 'Microphone permission denied.';
+            _starting = false;
+          });
+        }
         return;
       }
-      // WAV/linear16 so the content-type we send Deepgram is honest. The
-      // target path is platform-specific (a real temp file on native, an
-      // ignored hint on web — `record` hands back a blob URL there).
+      // Encoder is platform-specific: WAV on native, Opus on web (WAV's web
+      // path uses a UI-blocking AudioWorklet). The target path is likewise
+      // platform-specific — a real temp file on native, an ignored hint on web
+      // where `record` hands back a blob URL.
       final path = await recordingTargetPath();
-      await widget.recorder.start(
-        const RecordConfig(
-          encoder: AudioEncoder.wav,
-          sampleRate: 16000,
-          numChannels: 1,
-        ),
-        path: path,
-      );
-      setState(() => _recording = true);
+      await widget.recorder.start(recordingConfig(), path: path);
+      if (!mounted) return;
+      setState(() {
+        _recording = true;
+        _starting = false;
+      });
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _starting = false;
+        });
+      }
     }
   }
 
@@ -184,7 +200,10 @@ class _SpeechToTextPanelState extends State<_SpeechToTextPanel> {
     setState(() => _transcribing = true);
     try {
       final Uint8List bytes = await readRecordingBytes(path);
-      final transcript = await widget.deepgram.transcribe(bytes);
+      final transcript = await widget.deepgram.transcribe(
+        bytes,
+        contentType: recordingContentType(),
+      );
       if (!mounted) return;
       setState(() {
         _transcript = transcript.isEmpty ? '(no speech detected)' : transcript;
@@ -204,12 +223,22 @@ class _SpeechToTextPanelState extends State<_SpeechToTextPanel> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         FilledButton.icon(
-          onPressed: _transcribing ? null : _toggle,
-          icon: Icon(_recording ? Icons.stop : Icons.mic),
+          onPressed: (_transcribing || _starting) ? null : _toggle,
+          icon: _starting
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(_recording ? Icons.stop : Icons.mic),
           label: Text(
-            _recording
-                ? 'Stop & transcribe'
-                : (_transcribing ? 'Transcribing…' : 'Hold a thought — record'),
+            _starting
+                ? 'Starting…'
+                : _recording
+                    ? 'Stop & transcribe'
+                    : (_transcribing
+                        ? 'Transcribing…'
+                        : 'Hold a thought — record'),
           ),
           style: FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 16),
@@ -235,6 +264,14 @@ class _SpeechToTextPanelState extends State<_SpeechToTextPanel> {
     }
     if (_transcribing) {
       return const Center(child: CircularProgressIndicator());
+    }
+    if (_starting) {
+      return _CenteredHint(
+        icon: Icons.mic_external_on,
+        color: theme.colorScheme.primary,
+        title: 'Starting microphone…',
+        detail: 'Wait for "Listening…" before you speak.',
+      );
     }
     if (_recording) {
       return _CenteredHint(
@@ -370,12 +407,15 @@ class _TextToSpeechPanelState extends State<_TextToSpeechPanel> {
             final state = snapshot.data;
             final playing = state?.playing ?? false;
             final processing = state?.processingState;
+            // just_audio keeps `playing == true` after a clip ends and only
+            // flips `processingState` to completed, so check completion first
+            // — otherwise the label sticks on "Playing…" forever.
             final label = _busy
                 ? 'Calling Deepgram…'
-                : playing
-                    ? 'Playing…'
-                    : processing == ProcessingState.completed
-                        ? 'Done.'
+                : processing == ProcessingState.completed
+                    ? 'Done.'
+                    : playing
+                        ? 'Playing…'
                         : 'Idle.';
             return Text(label, style: theme.textTheme.bodyMedium);
           },
