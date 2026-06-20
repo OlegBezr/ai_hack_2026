@@ -7,13 +7,25 @@ import 'package:rive/rive.dart';
 /// https://rive.app/marketplace/24847-46420-3d-book-with-page-flip-animation/
 /// It ships in `assets/rive/book.riv`.
 ///
-/// IMPORTANT — how this file is driven:
-/// The artboard is "Book" and the state machine is "State Machine 1". The flip
-/// is NOT wired to Rive pointer listeners, so dragging/tapping the artboard does
-/// nothing on its own. Instead the state machine exposes *trigger inputs*
-/// (e.g. `Next`, `Trigger 1`) that we fire programmatically to turn pages. This
-/// screen discovers those triggers at runtime and exposes a button per trigger,
-/// plus tap-to-advance on the book itself.
+/// How this file is driven (verified from the file's binary):
+/// The artboard is "Book" and the state machine is "State Machine 1". Its
+/// inputs are:
+///   * `isFirstPage` (boolean)  – true while showing the front cover
+///   * `isLastPage`  (boolean)  – true while showing the back cover
+///   * `Back`        (trigger)  – flip one page backward
+///   * `Next`        (trigger)  – flip one page forward
+///
+/// The flip is NOT wired to Rive pointer listeners, so we drive it by firing
+/// the `Next` / `Back` triggers. Two gotchas this screen handles:
+///
+///  1. `RiveWidget` installs its own raw pointer listener that forwards pointer
+///     events into the state machine. If we *also* wrap it in a tap handler,
+///     every click is processed twice and can knock the book into a bad state.
+///     We set [RiveHitTestBehavior.none] so Rive ignores pointers and our
+///     [GestureDetector] is the sole handler.
+///  2. Firing `Next` past the last page (or `Back` past the first) can flip the
+///     book into an empty/closed state that looks "dismissed". We gate every
+///     fire on the `isFirstPage` / `isLastPage` booleans.
 class RiveBookDemoScreen extends StatefulWidget {
   const RiveBookDemoScreen({super.key});
 
@@ -29,12 +41,10 @@ class _RiveBookDemoScreenState extends State<RiveBookDemoScreen> {
   RiveWidgetController? _controller;
   ViewModelInstance? _viewModelInstance;
 
-  /// Trigger inputs discovered on the state machine, in declaration order.
-  final List<TriggerInput> _triggers = <TriggerInput>[];
-
-  /// The trigger used for tap-to-advance: the one named "Next" if present,
-  /// otherwise the first trigger on the state machine.
-  TriggerInput? _advanceTrigger;
+  TriggerInput? _next;
+  TriggerInput? _back;
+  BooleanInput? _isFirstPage;
+  BooleanInput? _isLastPage;
 
   String? _error;
 
@@ -59,19 +69,15 @@ class _RiveBookDemoScreenState extends State<RiveBookDemoScreen> {
       // illustrations render.
       final vmi = controller.dataBind(DataBind.auto());
 
-      // Discover the trigger inputs that actually drive the page flip.
+      // Look up the page-flip controls by name (verified from the .riv).
       // ignore: deprecated_member_use
-      for (final input in controller.stateMachine.inputs) {
-        if (input is TriggerInput) _triggers.add(input);
-      }
-      // Tap-to-advance prefers a trigger named "Next", else the first one.
-      for (final t in _triggers) {
-        if (t.name.toLowerCase() == 'next') {
-          _advanceTrigger = t;
-          break;
-        }
-      }
-      _advanceTrigger ??= _triggers.isNotEmpty ? _triggers.first : null;
+      _next = controller.stateMachine.trigger('Next');
+      // ignore: deprecated_member_use
+      _back = controller.stateMachine.trigger('Back');
+      // ignore: deprecated_member_use
+      _isFirstPage = controller.stateMachine.boolean('isFirstPage');
+      // ignore: deprecated_member_use
+      _isLastPage = controller.stateMachine.boolean('isLastPage');
 
       if (!mounted) {
         file.dispose();
@@ -90,11 +96,24 @@ class _RiveBookDemoScreenState extends State<RiveBookDemoScreen> {
     }
   }
 
+  /// Flip forward, unless we're already on the last page.
+  void _flipNext() {
+    if (_isLastPage?.value == true) return;
+    _next?.fire();
+  }
+
+  /// Flip backward, unless we're already on the first page.
+  void _flipBack() {
+    if (_isFirstPage?.value == true) return;
+    _back?.fire();
+  }
+
   @override
   void dispose() {
-    for (final t in _triggers) {
-      t.dispose();
-    }
+    _next?.dispose();
+    _back?.dispose();
+    _isFirstPage?.dispose();
+    _isLastPage?.dispose();
     _viewModelInstance?.dispose();
     _controller?.dispose();
     _file?.dispose();
@@ -147,37 +166,40 @@ class _RiveBookDemoScreenState extends State<RiveBookDemoScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // Tapping the book fires the forward trigger — the file has no pointer
-    // listeners of its own, so we forward taps to the state machine.
+    // Rive ignores pointers (hitTestBehavior: none) so this GestureDetector is
+    // the only thing handling taps — no double-processing with Rive's own
+    // internal pointer listener.
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => _advanceTrigger?.fire(),
+      onTap: _flipNext,
       child: RiveWidget(
         controller: controller,
         fit: Fit.contain,
+        hitTestBehavior: RiveHitTestBehavior.none,
       ),
     );
   }
 
   Widget _buildControls() {
-    if (_controller == null || _triggers.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    if (_controller == null) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Column(
         children: [
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 12,
-            runSpacing: 8,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              for (final trigger in _triggers)
-                ElevatedButton.icon(
-                  onPressed: () => trigger.fire(),
-                  icon: const Icon(Icons.menu_book, size: 18),
-                  label: Text(trigger.name),
-                ),
+              ElevatedButton.icon(
+                onPressed: _flipBack,
+                icon: const Icon(Icons.chevron_left),
+                label: const Text('Back'),
+              ),
+              const SizedBox(width: 16),
+              ElevatedButton.icon(
+                onPressed: _flipNext,
+                icon: const Icon(Icons.chevron_right),
+                label: const Text('Next'),
+              ),
             ],
           ),
           const SizedBox(height: 8),
