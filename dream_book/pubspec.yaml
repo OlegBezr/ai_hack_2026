@@ -20,6 +20,12 @@ dependencies:
   just_audio: ^0.10.5
   path_provider: ^2.1.6
 
+# Pinned: turnable_page 1.0.0 uses the removed `Pdfrx.getCacheDirectory` setter,
+# which only exists in pdfrx 2.1.x (it became `cacheDirectoryPath` in later 2.x).
+dependency_overrides:
+  pdfrx: 2.1.3
+  pdfrx_engine: 0.1.12
+
 dev_dependencies:
   sentry_dart_plugin: ^3.4.0
   flutter_test:
