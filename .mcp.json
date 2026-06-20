@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "midjourney": {
+      "type": "http",
+      "url": "https://mcp.midjourney.com/mcp"
+    }
+  }
+}
