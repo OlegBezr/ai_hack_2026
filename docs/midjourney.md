@@ -288,3 +288,41 @@ Resources:
 - MCP docs: https://www.midjourney.com/mcp-docs
 - Prompting / parameters: https://docs.midjourney.com/
 - Explore: https://www.midjourney.com/explore
+
+---
+
+## TODO: web support via a proxy backend (deferred)
+
+**Status:** iOS/Android work today (direct calls). **Web is broken by CORS** and is
+parked until we build a backend.
+
+**Why web fails:** the `/mcp` endpoint does not answer CORS preflight — an `OPTIONS`
+to `https://mcp.midjourney.com/mcp` returns `405` with no `Access-Control-Allow-Origin`.
+Our POST sends an `Authorization` header + `application/json` body, which forces a
+browser preflight, so the browser blocks the request before it's sent. (Note: `/token`
+*does* return `Access-Control-Allow-Origin: *`, so only `/mcp` is the problem.) CORS is
+enforced by the browser — it cannot be disabled from Dart/app logic.
+
+**The fix — a proxy backend with auth:**
+- [ ] Stand up a small backend (EAS Hosting function / Cloudflare Worker / shelf server).
+- [ ] Proxy `POST /mcp` → `https://mcp.midjourney.com/mcp`, returning proper
+      `Access-Control-Allow-Origin` (and handling the `OPTIONS` preflight) so the web app
+      can call it **same-origin**.
+- [ ] **Hold the Midjourney token server-side** (env/secret on the backend) instead of
+      bundling it into the web build. The browser authenticates to *our* backend, and the
+      backend attaches the Midjourney `Authorization` header. This also fixes the
+      "secrets shipped in the binary" problem and the refresh-token-rotation contention
+      (one server owns the rotation, not N clients).
+- [ ] Add our own auth/rate-limiting on the proxy so it's not an open relay to our
+      Midjourney account.
+- [ ] In the Flutter client, switch the base URL by platform: `kIsWeb` → proxy URL;
+      native → direct `mcp.midjourney.com` (or route everything through the proxy for
+      consistency once it exists).
+- [ ] On web, drop the interactive-OAuth fallback entirely (it can't succeed there) —
+      fail with a clear "use the proxy backend" error instead of opening a browser.
+
+**Quick local workaround until then:** run web with browser security off (dev only,
+local only — not a real fix):
+```
+flutter run -d chrome --web-browser-flag "--disable-web-security"
+```
