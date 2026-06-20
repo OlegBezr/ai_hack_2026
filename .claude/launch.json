@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dream_book-web",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/olegbezr/Code/ai_hack_2026/dream_book && exec /Users/olegbezr/Code/ai_hack_2026/.fvm/flutter_sdk/bin/flutter run -d web-server --web-port 8099"
+      ],
+      "port": 8099
+    }
+  ]
+}

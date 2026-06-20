@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'demos/deepgram_demo.dart';
 import 'demos/midjourney_demo.dart';
+import 'demos/rive_book_demo.dart';
 import 'demos/turnable_page_demo.dart';
 
 /// Simple landing page that routes to the app's demo screens.
@@ -21,6 +22,12 @@ class HomePage extends StatelessWidget {
         subtitle: 'Flippable book powered by the turnable_page package.',
         icon: Icons.auto_stories,
         builder: (_) => const TurnablePageDemoScreen(),
+      ),
+      _DemoEntry(
+        title: 'Rive 3D Page Flip',
+        subtitle: 'Interactive 3D book rendered with the Rive runtime.',
+        icon: Icons.menu_book,
+        builder: (_) => const RiveBookDemoScreen(),
       ),
       _DemoEntry(
         title: 'Midjourney Image Generation',

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:rive/rive.dart' as rive;
 
 import 'home_page.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Initialize the Rive runtime (loads native libraries) before any Rive
+  // widget is built. Required by the rive 0.14.x / rive_native runtime.
+  await rive.RiveNative.init();
   // Loads bundled dream_book/.env (MJ_ACCESS_TOKEN / MJ_REFRESH_TOKEN /
   // MJ_CLIENT_ID). isOptional => app still runs (interactive OAuth) if absent.
   await dotenv.load(fileName: '.env', isOptional: true);

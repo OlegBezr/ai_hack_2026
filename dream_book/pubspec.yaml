@@ -19,6 +19,7 @@ dependencies:
   record: ^7.1.0
   just_audio: ^0.10.5
   path_provider: ^2.1.6
+  rive: ^0.14.8
 
 # Pinned: turnable_page 1.0.0 uses the removed `Pdfrx.getCacheDirectory` setter,
 # which only exists in pdfrx 2.1.x (it became `cacheDirectoryPath` in later 2.x).
@@ -36,6 +37,7 @@ flutter:
   uses-material-design: true
   assets:
     - .env
+    - assets/rive/
 
 sentry:
   upload_debug_symbols: true
