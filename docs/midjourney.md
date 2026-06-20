@@ -181,6 +181,84 @@ are the four `cdn_url` JPEGs.
 
 ---
 
+## Flutter auth: the three modes + `.env` seeding
+
+Implementation: `dream_book/lib/midjourney/midjourney_auth.dart`. There is **one**
+auth object (`MidjourneyAuth`) with three ways to get a starting token. All three
+then share the same logic on every call: if the access token is expired, refresh it
+using `refresh_token` + `client_id`, persist the rotated result to secure storage,
+and proceed.
+
+| Constructor                     | When to use | Native URL-scheme setup needed? |
+| ------------------------------- | ----------- | ------------------------------- |
+| `MidjourneyAuth()`              | Per-user login — each user OAuths their *own* Midjourney account (each needs a paid sub). | **Yes** (webview redirect) |
+| `MidjourneyAuth.withTokens(...)`| Seed tokens directly in code. | No |
+| `MidjourneyAuth.fromDotenv()`   | **Shared-account / demo.** Reads tokens from the bundled `.env`. | No |
+| `MidjourneyAuth.fromEnvironment()` | Same as dotenv but via `--dart-define` (build-time, file stays out of the binary as a readable asset). | No |
+
+The demo (`main.dart`) uses `MidjourneyAuth.fromDotenv()`.
+
+### Token lifetimes (why seeding is a *seed*, not a credential)
+
+- **Access token:** valid ~1 hour (`expires_in = 3600`). Refreshed automatically.
+- **Refresh token:** **single-use and rotating** — each refresh returns a *new*
+  refresh token and invalidates the old one. So the value you put in `.env` is
+  burned the first time the app refreshes. After that the live token lives in
+  `flutter_secure_storage`; the `.env` copy is stale. `.env` is therefore a
+  one-time **seed**, only re-read when secure storage is empty (fresh install /
+  cleared data).
+- `fromDotenv()` deliberately seeds `expiresAt = epoch 0`, so the **first** call
+  refreshes immediately — a possibly-stale pasted access token is swapped for a
+  known-good one before any tool call.
+
+### `.env` setup (already wired)
+
+1. `dream_book/pubspec.yaml` declares the dep and bundles the file as an asset:
+   ```yaml
+   dependencies:
+     flutter_dotenv: ^5.1.0
+   flutter:
+     assets:
+       - .env
+   ```
+2. `main()` loads it before building the app:
+   ```dart
+   await dotenv.load(fileName: '.env', isOptional: true);
+   ```
+3. `dream_book/.env` (gitignored) holds:
+   ```
+   MJ_ACCESS_TOKEN=...
+   MJ_REFRESH_TOKEN=...
+   MJ_CLIENT_ID=...
+   ```
+
+> The file must live at `dream_book/.env` (the app dir) so it's bundled — the
+> monorepo-root `.env` (BROWSER_BASE_API_KEY) is **not** bundled into the app.
+> Bundling `.env` as an asset ships the tokens inside the app binary: fine for a
+> hackathon, **not** for a public release.
+
+### Re-seeding `.env` (when the refresh token is dead)
+
+The seed dies after the app's first refresh, or if Claude Code's MCP (same account)
+refreshes in the meantime. To mint a fresh set, run the one-time OAuth helper at
+`/tmp/mj_auth.py` (PKCE + local-callback server), open the printed authorize URL,
+log into Midjourney, then copy `access_token` / `refresh_token` / `_client_id` from
+`/tmp/mj_token.json` into `dream_book/.env`. The flow:
+
+```
+python3 /tmp/mj_auth.py        # prints an authorize URL, waits on localhost:8765
+# open the URL, log in -> tokens land in /tmp/mj_token.json
+```
+
+(That script is the same standard DCR + PKCE + token-exchange flow documented above,
+just run from the desktop instead of the app.)
+
+### Gotcha: one account, one driver at a time
+
+Claude Code's Midjourney MCP and the app authenticate against the **same** Midjourney
+account. Because refresh tokens rotate per-account, concurrent use can invalidate each
+other's tokens. For a demo, drive generations from one place at a time.
+
 ## Architecture notes
 
 - **Directly in Flutter (current):** the app does OAuth + calls `/mcp` itself. No backend.
