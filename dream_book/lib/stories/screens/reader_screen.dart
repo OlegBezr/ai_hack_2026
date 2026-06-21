@@ -5,6 +5,7 @@ import 'package:turnable_page/turnable_page.dart';
 
 import '../../audio/background_music.dart';
 import '../../audio/page_narration.dart';
+import '../../book/book_voice_chat.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/magical_widgets.dart';
 import '../data/models.dart';
@@ -87,6 +88,19 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         title: Text(
           storyAsync.maybeWhen(data: (s) => s.title, orElse: () => 'Reading'),
         ),
+        actions: [
+          // Live voice-to-voice chat about this book (Deepgram Voice Agent).
+          // Only offered once the story (and its full text) has loaded, since
+          // the page text becomes the agent's system prompt.
+          storyAsync.maybeWhen(
+            data: (story) => IconButton(
+              tooltip: 'Talk about this book',
+              icon: const Icon(Icons.record_voice_over, color: MagicColors.gold),
+              onPressed: () => showBookVoiceChat(context, story),
+            ),
+            orElse: () => const SizedBox.shrink(),
+          ),
+        ],
       ),
       body: SafeArea(
         child: storyAsync.when(
