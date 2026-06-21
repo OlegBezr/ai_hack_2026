@@ -131,7 +131,8 @@
     <div class="state empty">
       <div class="empty-glyph">✦</div>
       <h2 class="empty-title">Your library awaits</h2>
-      <p class="state-text">Tap “New story” to begin your first tale.</p>
+      <p class="state-text">Speak a story aloud and watch it become an illustrated book.</p>
+      <button class="mz-btn" onclick={() => goto(resolve('/create'))}>🎙 Tell a story</button>
     </div>
   {:else}
     <ul class="grid">
@@ -182,7 +183,12 @@
     </ul>
   {/if}
 
-  <button class="fab" onclick={openNew} aria-label="New story">✦ New story</button>
+  <div class="fab-stack">
+    <button class="fab tell" onclick={() => goto(resolve('/create'))} aria-label="Tell a story">
+      🎙 Tell a story
+    </button>
+    <button class="fab" onclick={openNew} aria-label="New story">✦ New story</button>
+  </div>
 </div>
 
 {#if showNew}
@@ -400,12 +406,18 @@
     padding: 6px 8px;
   }
 
-  /* Floating action button */
-  .fab {
+  /* Floating action buttons */
+  .fab-stack {
     position: fixed;
     right: 24px;
     bottom: 24px;
     z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
+  }
+  .fab {
     font-family: var(--font-display);
     font-weight: 700;
     font-size: 15px;
@@ -423,6 +435,17 @@
   .fab:hover {
     transform: translateY(-3px);
     box-shadow: 0 14px 38px rgba(232, 169, 75, 0.55);
+  }
+  /* Secondary FAB: glass treatment so the two read as distinct affordances. */
+  .fab.tell {
+    color: var(--color-ink);
+    background: rgba(20, 16, 48, 0.72);
+    border: 1px solid rgba(244, 199, 102, 0.35);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+  .fab.tell:hover {
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
   }
 
   /* Dialogs */

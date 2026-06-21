@@ -5,6 +5,7 @@
   import { goto } from '$app/navigation';
   import Book from '$lib/components/Book.svelte';
   import NarrationBar from '$lib/components/NarrationBar.svelte';
+  import BookVoiceChat from '$lib/components/BookVoiceChat.svelte';
   import { getStory } from '$lib/stories';
   import { parseStyle, type StoryWithPages, type StoryStyle } from '$lib/types';
   import { Narration } from '$lib/audio/narration.svelte';
@@ -16,6 +17,7 @@
   let error = $state<string | null>(null);
 
   let controls = $state<{ next: () => void; prev: () => void } | null>(null);
+  let voiceChatOpen = $state(false);
 
   const narration = new Narration();
 
@@ -73,6 +75,15 @@
     <a class="close" href={resolve('/')} aria-label="Close reader">✕</a>
     {#if story}
       <h1 class="title">{story.title}</h1>
+      <button
+        class="talk"
+        type="button"
+        aria-label="Talk about this book"
+        title="Talk about this book"
+        onclick={() => (voiceChatOpen = true)}
+      >
+        🎙️ <span class="talk-text">Talk</span>
+      </button>
     {/if}
   </header>
 
@@ -107,6 +118,10 @@
     <p class="hint">Drag a page corner — or tap the arrows.</p>
   {/if}
 </main>
+
+{#if voiceChatOpen && story}
+  <BookVoiceChat {story} onClose={() => (voiceChatOpen = false)} />
+{/if}
 
 <style>
   .reader {
@@ -147,7 +162,32 @@
     font-size: clamp(18px, 3vw, 26px);
     color: var(--color-ink);
     text-align: center;
-    padding-right: 36px; /* balance the close button */
+  }
+  .talk {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 14px;
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: var(--radius-control);
+    color: var(--color-gold);
+    cursor: pointer;
+    border: 1px solid color-mix(in srgb, var(--color-gold) 40%, transparent);
+    background: color-mix(in srgb, var(--color-gold) 12%, transparent);
+  }
+  .talk:hover {
+    background: color-mix(in srgb, var(--color-gold) 20%, transparent);
+  }
+  .talk:active {
+    transform: scale(0.96);
+  }
+  @media (max-width: 480px) {
+    .talk-text {
+      display: none;
+    }
   }
   .stage {
     width: 100%;

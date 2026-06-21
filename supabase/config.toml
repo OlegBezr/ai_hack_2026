@@ -412,6 +412,14 @@ verify_jwt = true
 enabled = true
 verify_jwt = true
 
+[functions.voice-agent-token]
+enabled = true
+verify_jwt = true
+
+[functions.transcribe]
+enabled = true
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327

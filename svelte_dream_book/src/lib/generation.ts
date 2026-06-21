@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import type { StoryStyle } from './types';
 
 /**
  * Thin client for the three Supabase edge functions that drive AI generation —
@@ -45,6 +46,46 @@ export async function generateCoverTexture(
   return res.texture_url ?? null;
 }
 
+/** One page returned by `compose-story`, with its (transient) illustration prompt. */
+export interface ComposedPage {
+  id: string;
+  position: number;
+  text: string;
+  illustration_prompt: string;
+}
+
+/** Result of `compose-story`: a freshly created story plus per-page prompts so
+ *  the caller can fan out illustration/audio/cover generation. Mirrors the
+ *  Flutter `ComposedStoryResult`. */
+export interface ComposedStory {
+  story_id: string;
+  title: string;
+  cover_prompt: string;
+  style?: StoryStyle;
+  pages: ComposedPage[];
+}
+
+/**
+ * Compose a full storybook from a spoken/typed [transcript]: Claude splits it
+ * into ordered pages (each with an illustration prompt), picks a title + cover
+ * prompt, and the story + pages are persisted. Media is NOT generated here —
+ * fan out {@link generateAudio} / {@link generateIllustration} /
+ * {@link generateCoverTexture} afterwards.
+ */
+export async function composeStory(
+  transcript: string,
+  opts: { title?: string; pageCount?: number } = {}
+): Promise<ComposedStory> {
+  const body: Record<string, unknown> = { transcript };
+  if (opts.title?.trim()) body.title = opts.title.trim();
+  if (opts.pageCount) body.page_count = opts.pageCount;
+
+  const { data, error } = await supabase.functions.invoke('compose-story', { body });
+  const res = unwrap<ComposedStory>(data, error);
+  if (!res?.story_id) throw new Error('compose-story returned an unexpected response');
+  return res;
+}
+
 /** Generate narration audio (Deepgram TTS). Returns the audio URL. */
 export async function generateAudio(pageId: string, text?: string): Promise<string | null> {
   const body: Record<string, unknown> = { page_id: pageId };
@@ -52,4 +93,16 @@ export async function generateAudio(pageId: string, text?: string): Promise<stri
   const { data, error } = await supabase.functions.invoke('generate-audio', { body });
   const res = unwrap<{ audio_url?: string }>(data, error);
   return res.audio_url ?? null;
+}
+
+/**
+ * Mint a short-lived Deepgram token for the live Voice Agent WebSocket. The
+ * long-lived key stays server-side; this edge function exchanges it for an
+ * ephemeral token gated by the signed-in user. Returns the token and its TTL.
+ */
+export async function getVoiceAgentToken(): Promise<{ token: string; expiresIn: number }> {
+  const { data, error } = await supabase.functions.invoke('voice-agent-token', { body: {} });
+  const res = unwrap<{ token?: string; expires_in?: number }>(data, error);
+  if (!res.token) throw new Error('No voice token returned');
+  return { token: res.token, expiresIn: res.expires_in ?? 60 };
 }
