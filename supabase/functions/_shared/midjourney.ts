@@ -11,9 +11,22 @@
 // See the migration `..._midjourney_vault_rotation.sql`.
 
 import { serviceClient } from "./auth.ts";
+import {
+  attach,
+  breadcrumb,
+  captureError,
+  logError,
+  logInfo,
+  logWarn,
+  measure,
+  setTags,
+  withSpan,
+} from "./sentry.ts";
 
 const ENDPOINT = "https://mcp.midjourney.com/mcp";
 const TOKEN_ENDPOINT = "https://mcp.midjourney.com/token";
+// A generation slower than this is worth a heads-up (still succeeds).
+const SLOW_GENERATE_MS = 90_000;
 
 export class MidjourneyError extends Error {
   code?: number;
@@ -54,6 +67,10 @@ async function loadStoredTokens(): Promise<MjTokens | null> {
   const { data, error } = await serviceClient().rpc("get_midjourney_oauth");
   if (error) {
     console.error("Failed to load Midjourney tokens:", error.message);
+    logError("midjourney vault load failed", { detail: error.message });
+    captureError(new Error(`Failed to load Midjourney tokens: ${error.message}`), {
+      context: { op: "get_midjourney_oauth" },
+    });
     return null;
   }
   if (!data || typeof data !== "object") return null;
@@ -88,6 +105,10 @@ async function saveStoredTokens(tokens: MjTokens): Promise<void> {
   });
   if (error) {
     console.error("Failed to persist Midjourney tokens:", error.message);
+    logError("midjourney vault persist failed", { detail: error.message });
+    captureError(new Error(`Failed to persist Midjourney tokens: ${error.message}`), {
+      context: { op: "set_midjourney_oauth" },
+    });
   }
 }
 
@@ -155,17 +176,25 @@ async function refreshAccessToken(): Promise<string> {
     );
   }
 
+  breadcrumb("midjourney.auth", "refreshing access token");
+  logInfo("midjourney token refresh");
+
   const body = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token: refreshToken,
     client_id: clientId,
   });
 
-  const res = await fetch(TOKEN_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString(),
-  });
+  const res = await withSpan(
+    "midjourney.auth",
+    "Midjourney token refresh",
+    () =>
+      fetch(TOKEN_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString(),
+      }),
+  );
 
   if (res.status !== 200) {
     const text = await res.text();
@@ -175,6 +204,8 @@ async function refreshAccessToken(): Promise<string> {
     // instead of surfacing the error.
     const reloaded = await reloadTokens();
     if (reloaded && reloaded.refreshToken !== refreshToken) {
+      breadcrumb("midjourney.auth", "adopted token rotated by another worker");
+      logWarn("midjourney token rotated by another worker");
       _initialized = false;
       return reloaded.accessToken;
     }
@@ -292,6 +323,7 @@ async function rpcWithRetry(
   let { status, message, id } = await rpc(token, method, params);
 
   if (status === 401) {
+    breadcrumb("midjourney.rpc", `401 on ${method} — refreshing and retrying`);
     token = await refreshAccessToken();
     ({ status, message, id } = await rpc(token, method, params));
     if (status === 401) {
@@ -347,6 +379,10 @@ async function callTool(
   const result = await rpcWithRetry("tools/call", { name, arguments: args });
 
   if (result.isError === true) {
+    // Stash the raw tool result on the request scope so it rides along with the
+    // error the wrapper captures — invaluable for debugging MJ-side failures.
+    attach(`midjourney-${name}-error.json`, JSON.stringify(result, null, 2));
+    logWarn("midjourney tool error", { tool: name });
     throw new MidjourneyError(extractText(result) ?? "Tool call failed");
   }
   // Prefer the typed structuredContent; fall back to parsing the text block.
@@ -371,19 +407,46 @@ async function callTool(
 export async function generateImage(
   prompt: string,
 ): Promise<{ jobId: string; images: string[] }> {
-  const json = await callTool("generate_image", { prompt });
+  const startedAt = Date.now();
+  return await withSpan(
+    "midjourney.generate_image",
+    "Midjourney generate_image",
+    async () => {
+      const json = await callTool("generate_image", { prompt });
 
-  const jobId = typeof json.job_id === "string" ? json.job_id : "";
-  const rawImages = Array.isArray(json.images) ? json.images : [];
-  const images = rawImages
-    .map((e) => {
-      if (e && typeof e === "object") {
-        const url = (e as Record<string, unknown>).cdn_url;
-        return typeof url === "string" ? url : null;
+      const jobId = typeof json.job_id === "string" ? json.job_id : "";
+      const rawImages = Array.isArray(json.images) ? json.images : [];
+      const images = rawImages
+        .map((e) => {
+          if (e && typeof e === "object") {
+            const url = (e as Record<string, unknown>).cdn_url;
+            return typeof url === "string" ? url : null;
+          }
+          return null;
+        })
+        .filter((u): u is string => u !== null);
+
+      const durationMs = Date.now() - startedAt;
+      if (jobId) setTags({ mj_job_id: jobId });
+      measure("mj_images", images.length);
+      measure("mj_duration_ms", durationMs, "millisecond");
+      breadcrumb("midjourney.generate_image", "job complete", {
+        job_id: jobId,
+        images: images.length,
+      });
+      logInfo("midjourney generate_image complete", {
+        job_id: jobId,
+        images: images.length,
+        duration_ms: durationMs,
+      });
+      if (images.length === 0) {
+        logWarn("midjourney returned no images", { job_id: jobId });
       }
-      return null;
-    })
-    .filter((u): u is string => u !== null);
-
-  return { jobId, images };
+      if (durationMs > SLOW_GENERATE_MS) {
+        logWarn("midjourney generation slow", { job_id: jobId, duration_ms: durationMs });
+      }
+      return { jobId, images };
+    },
+    { prompt_len: prompt.length },
+  );
 }
