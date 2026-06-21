@@ -22,11 +22,13 @@ class MidjourneyDemoScreen extends StatefulWidget {
 class _MidjourneyDemoScreenState extends State<MidjourneyDemoScreen> {
   /// The client is built lazily and reused for the lifetime of the screen.
   /// `fromDotenv()` picks up the bundled tokens loaded in `main()`.
-  late final MidjourneyClient _client =
-      MidjourneyClient(auth: MidjourneyAuth.fromDotenv());
+  late final MidjourneyClient _client = MidjourneyClient(
+    auth: MidjourneyAuth.fromDotenv(),
+  );
 
-  final _promptController =
-      TextEditingController(text: 'a big dragon --ar 16:9');
+  final _promptController = TextEditingController(
+    text: 'a big dragon --ar 16:9',
+  );
 
   _Status _status = _Status.idle;
   String? _error;
@@ -203,8 +205,9 @@ class _MidjourneyDemoScreenState extends State<MidjourneyDemoScreen> {
           const SizedBox(height: 12),
           Text(
             'Enter a prompt and tap Generate.',
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(color: theme.colorScheme.outline),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
           ),
         ],
       ),
@@ -219,15 +222,13 @@ class _MidjourneyDemoScreenState extends State<MidjourneyDemoScreen> {
         children: [
           const CircularProgressIndicator(),
           const SizedBox(height: 16),
-          Text(
-            'Generating your images…',
-            style: theme.textTheme.titleMedium,
-          ),
+          Text('Generating your images…', style: theme.textTheme.titleMedium),
           const SizedBox(height: 4),
           Text(
             'This usually takes tens of seconds.',
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.outline),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
           ),
         ],
       ),
@@ -240,16 +241,13 @@ class _MidjourneyDemoScreenState extends State<MidjourneyDemoScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.error_outline,
-            size: 48,
-            color: theme.colorScheme.error,
-          ),
+          Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
           const SizedBox(height: 12),
           Text(
             'Generation failed',
-            style: theme.textTheme.titleMedium
-                ?.copyWith(color: theme.colorScheme.error),
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: theme.colorScheme.error,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -277,9 +275,7 @@ class _MidjourneyDemoScreenState extends State<MidjourneyDemoScreen> {
       crossAxisCount: 2,
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
-      children: [
-        for (final img in images) _buildGridTile(context, img),
-      ],
+      children: [for (final img in images) _buildGridTile(context, img)],
     );
   }
 

@@ -19,7 +19,8 @@ class MidjourneyImage {
   /// `midjourney://image/<job>/<index>` reference.
   final String resourceUri;
 
-  factory MidjourneyImage.fromJson(Map<String, dynamic> json) => MidjourneyImage(
+  factory MidjourneyImage.fromJson(Map<String, dynamic> json) =>
+      MidjourneyImage(
         gridIndex: json['grid_index'] as int,
         cdnUrl: json['cdn_url'] as String,
         resourceUri: json['resource_uri'] as String,
@@ -44,12 +45,12 @@ class MidjourneyJob {
   final List<MidjourneyImage> images;
 
   factory MidjourneyJob.fromJson(Map<String, dynamic> json) => MidjourneyJob(
-        jobId: json['job_id'] as String,
-        webUrl: json['web_url'] as String? ?? '',
-        images: (json['images'] as List<dynamic>? ?? [])
-            .map((e) => MidjourneyImage.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    jobId: json['job_id'] as String,
+    webUrl: json['web_url'] as String? ?? '',
+    images: (json['images'] as List<dynamic>? ?? [])
+        .map((e) => MidjourneyImage.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 }
 
 /// OAuth tokens returned by the `/token` endpoint.
@@ -68,9 +69,8 @@ class MidjourneyTokens {
   final DateTime expiresAt;
   final String scope;
 
-  bool get isExpired => DateTime.now().isAfter(
-        expiresAt.subtract(const Duration(seconds: 60)),
-      );
+  bool get isExpired =>
+      DateTime.now().isAfter(expiresAt.subtract(const Duration(seconds: 60)));
 
   factory MidjourneyTokens.fromTokenResponse(Map<String, dynamic> json) {
     final expiresIn = (json['expires_in'] as num?)?.toInt() ?? 3600;
@@ -83,11 +83,11 @@ class MidjourneyTokens {
   }
 
   Map<String, dynamic> toJson() => {
-        'access_token': accessToken,
-        'refresh_token': refreshToken,
-        'expires_at': expiresAt.toIso8601String(),
-        'scope': scope,
-      };
+    'access_token': accessToken,
+    'refresh_token': refreshToken,
+    'expires_at': expiresAt.toIso8601String(),
+    'scope': scope,
+  };
 
   factory MidjourneyTokens.fromJson(Map<String, dynamic> json) =>
       MidjourneyTokens(

@@ -148,7 +148,11 @@ class _RiveBookDemoScreenState extends State<RiveBookDemoScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
+              const Icon(
+                Icons.error_outline,
+                color: Colors.redAccent,
+                size: 48,
+              ),
               const SizedBox(height: 12),
               Text(
                 'Failed to load the Rive animation.\n$_error',

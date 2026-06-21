@@ -9,10 +9,8 @@ import 'package:record/record.dart';
 /// web goes through `record`'s AudioWorklet encoder, which blocks the UI thread
 /// while it spins up (and hangs outright if its worklet asset isn't served) —
 /// that's the "stuck on Starting…" freeze. Deepgram decodes WebM/Opus fine.
-RecordConfig recordingConfig() => const RecordConfig(
-      encoder: AudioEncoder.opus,
-      numChannels: 1,
-    );
+RecordConfig recordingConfig() =>
+    const RecordConfig(encoder: AudioEncoder.opus, numChannels: 1);
 
 /// Content-type matching [recordingConfig]'s output, for the Deepgram request.
 /// `record` wraps Opus in a WebM container on web.

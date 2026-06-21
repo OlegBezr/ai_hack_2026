@@ -394,6 +394,16 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Stories feature edge functions. verify_jwt = true: the gateway requires a valid
+# Supabase JWT; each function ALSO re-verifies the user via auth.getUser().
+[functions.generate-illustration]
+enabled = true
+verify_jwt = true
+
+[functions.generate-audio]
+enabled = true
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327

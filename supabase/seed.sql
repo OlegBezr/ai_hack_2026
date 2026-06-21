@@ -1,0 +1,2 @@
+-- Sample stories are seeded per-user via the on_auth_user_created trigger
+-- (see migration 20260620231043). Intentionally empty.

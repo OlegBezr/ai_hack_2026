@@ -34,6 +34,14 @@
 </head>
 <body>
   <!--
+    Corbado Passkeys Web SDK. Required by passkeys_web (pulled in transitively
+    by supabase_flutter); it must define window.PasskeyAuthenticator before the
+    Flutter app starts, so it is loaded as a classic script ahead of bootstrap.
+    Bundle from https://github.com/corbado/flutter-passkeys/releases (2.4.0).
+  -->
+  <script src="passkeys_bundle.js"></script>
+
+  <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
     or to give the user feedback during the initialization process.

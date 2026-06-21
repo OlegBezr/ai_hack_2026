@@ -6,9 +6,23 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": [
         "-c",
-        "cd /Users/olegbezr/Code/ai_hack_2026/dream_book && exec /Users/olegbezr/Code/ai_hack_2026/.fvm/flutter_sdk/bin/flutter run -d web-server --web-port 8099"
+        "cd /Users/olegbezr/Code/ai_hack_2026/dream_book && exec /Users/olegbezr/Code/ai_hack_2026/.fvm/flutter_sdk/bin/flutter run -d web-server --web-hostname 127.0.0.1 --web-port 8099 --dart-define=SUPABASE_URL=http://127.0.0.1:54321 --dart-define=SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
       ],
       "port": 8099
+    },
+    {
+      "name": "dreambook-static",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8090",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "/Users/olegbezr/Code/ai_hack_2026/dream_book/build/web"
+      ],
+      "port": 8090
     }
   ]
 }

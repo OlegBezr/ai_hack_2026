@@ -6,3 +6,6 @@
 .env.keys
 .env.local
 .env.*.local
+
+# Edge function secrets (auto-loaded by `supabase start`)
+functions/.env

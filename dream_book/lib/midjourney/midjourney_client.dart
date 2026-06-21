@@ -12,7 +12,7 @@ import 'midjourney_models.dart';
 /// See `docs/midjourney.md` for the verified protocol details.
 class MidjourneyClient {
   MidjourneyClient({required this.auth, http.Client? httpClient})
-      : _http = httpClient ?? http.Client();
+    : _http = httpClient ?? http.Client();
 
   static const _endpoint = 'https://mcp.midjourney.com/mcp';
 
@@ -76,11 +76,15 @@ class MidjourneyClient {
   }
 
   Future<Map<String, dynamic>> _callTool(
-      String name, Map<String, dynamic> arguments) async {
+    String name,
+    Map<String, dynamic> arguments,
+  ) async {
     final token = await auth.getAccessToken();
     await _ensureInitialized(token);
-    final result =
-        await _rpc(token, 'tools/call', {'name': name, 'arguments': arguments});
+    final result = await _rpc(token, 'tools/call', {
+      'name': name,
+      'arguments': arguments,
+    });
 
     if (result['isError'] == true) {
       throw MidjourneyException(_extractText(result) ?? 'Tool call failed');
@@ -98,7 +102,10 @@ class MidjourneyClient {
 
   /// Performs one JSON-RPC call and returns the `result` object.
   Future<Map<String, dynamic>> _rpc(
-      String token, String method, Map<String, dynamic> params) async {
+    String token,
+    String method,
+    Map<String, dynamic> params,
+  ) async {
     final id = ++_id;
     final res = await _http.post(
       Uri.parse(_endpoint),
@@ -119,8 +126,10 @@ class MidjourneyClient {
       throw MidjourneyException('Unauthorized — token rejected', code: 401);
     }
     if (res.statusCode >= 400) {
-      throw MidjourneyException('HTTP ${res.statusCode}: ${res.body}',
-          code: res.statusCode);
+      throw MidjourneyException(
+        'HTTP ${res.statusCode}: ${res.body}',
+        code: res.statusCode,
+      );
     }
 
     final message = _parseSse(res.body, id);
@@ -129,8 +138,10 @@ class MidjourneyClient {
     }
     if (message['error'] != null) {
       final err = message['error'] as Map<String, dynamic>;
-      throw MidjourneyException(err['message']?.toString() ?? 'RPC error',
-          code: (err['code'] as num?)?.toInt());
+      throw MidjourneyException(
+        err['message']?.toString() ?? 'RPC error',
+        code: (err['code'] as num?)?.toInt(),
+      );
     }
     return (message['result'] as Map<String, dynamic>?) ?? {};
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'demos/deepgram_demo.dart';
 import 'demos/midjourney_demo.dart';
@@ -52,6 +53,40 @@ class HomePage extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              Card(
+                clipBehavior: Clip.antiAlias,
+                color: theme.colorScheme.primaryContainer,
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  leading: CircleAvatar(
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: theme.colorScheme.onPrimary,
+                    child: const Icon(Icons.auto_stories),
+                  ),
+                  title: Text(
+                    'My Stories (Login)',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Sign in to create and edit your stories.',
+                    style: TextStyle(
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                  trailing: Icon(
+                    Icons.chevron_right,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                  onTap: () => context.go('/stories'),
+                ),
+              ),
+              const SizedBox(height: 16),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Text(
@@ -102,15 +137,12 @@ class _DemoCard extends StatelessWidget {
           foregroundColor: theme.colorScheme.onPrimaryContainer,
           child: Icon(entry.icon),
         ),
-        title: Text(
-          entry.title,
-          style: theme.textTheme.titleMedium,
-        ),
+        title: Text(entry.title, style: theme.textTheme.titleMedium),
         subtitle: Text(entry.subtitle),
         trailing: const Icon(Icons.chevron_right),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: entry.builder),
-        ),
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: entry.builder)),
       ),
     );
   }

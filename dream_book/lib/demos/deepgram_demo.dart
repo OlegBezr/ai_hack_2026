@@ -73,10 +73,7 @@ class _DeepgramDemoScreenState extends State<DeepgramDemoScreen> {
                         recorder: _recorder,
                         deepgram: _deepgram,
                       )
-                    : _TextToSpeechPanel(
-                        deepgram: _deepgram,
-                        player: _player,
-                      ),
+                    : _TextToSpeechPanel(deepgram: _deepgram, player: _player),
               ),
             ],
           ),
@@ -235,10 +232,8 @@ class _SpeechToTextPanelState extends State<_SpeechToTextPanel> {
             _starting
                 ? 'Starting…'
                 : _recording
-                    ? 'Stop & transcribe'
-                    : (_transcribing
-                        ? 'Transcribing…'
-                        : 'Hold a thought — record'),
+                ? 'Stop & transcribe'
+                : (_transcribing ? 'Transcribing…' : 'Hold a thought — record'),
           ),
           style: FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 16),
@@ -413,10 +408,10 @@ class _TextToSpeechPanelState extends State<_TextToSpeechPanel> {
             final label = _busy
                 ? 'Calling Deepgram…'
                 : processing == ProcessingState.completed
-                    ? 'Done.'
-                    : playing
-                        ? 'Playing…'
-                        : 'Idle.';
+                ? 'Done.'
+                : playing
+                ? 'Playing…'
+                : 'Idle.';
             return Text(label, style: theme.textTheme.bodyMedium);
           },
         ),
@@ -453,14 +448,19 @@ class _CenteredHint extends StatelessWidget {
         children: [
           Icon(icon, size: 48, color: color),
           const SizedBox(height: 12),
-          Text(title, style: theme.textTheme.titleMedium, textAlign: TextAlign.center),
+          Text(
+            title,
+            style: theme.textTheme.titleMedium,
+            textAlign: TextAlign.center,
+          ),
           if (detail != null) ...[
             const SizedBox(height: 6),
             Text(
               detail!,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.outline),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
             ),
           ],
         ],

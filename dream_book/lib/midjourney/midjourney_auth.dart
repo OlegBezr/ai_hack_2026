@@ -24,8 +24,8 @@ class MidjourneyAuth {
     this.clientId,
     http.Client? httpClient,
     FlutterSecureStorage? storage,
-  })  : _http = httpClient ?? http.Client(),
-        _storage = storage ?? const FlutterSecureStorage();
+  }) : _http = httpClient ?? http.Client(),
+       _storage = storage ?? const FlutterSecureStorage();
 
   /// Shared-account / demo path: seed an existing token set and skip the
   /// interactive OAuth flow entirely.
@@ -158,15 +158,17 @@ class MidjourneyAuth {
     final challenge = _s256(verifier);
     final state = _randomUrlSafe(16);
 
-    final authUrl = Uri.parse(authorizeEndpoint).replace(queryParameters: {
-      'response_type': 'code',
-      'client_id': cid,
-      'redirect_uri': redirectUri,
-      'scope': scope,
-      'state': state,
-      'code_challenge': challenge,
-      'code_challenge_method': 'S256',
-    });
+    final authUrl = Uri.parse(authorizeEndpoint).replace(
+      queryParameters: {
+        'response_type': 'code',
+        'client_id': cid,
+        'redirect_uri': redirectUri,
+        'scope': scope,
+        'state': state,
+        'code_challenge': challenge,
+        'code_challenge_method': 'S256',
+      },
+    );
 
     final result = await FlutterWebAuth2.authenticate(
       url: authUrl.toString(),
@@ -226,14 +228,18 @@ class MidjourneyAuth {
     );
     if (res.statusCode != 200 && res.statusCode != 201) {
       throw MidjourneyException(
-          'Client registration failed: ${res.statusCode} ${res.body}');
+        'Client registration failed: ${res.statusCode} ${res.body}',
+      );
     }
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     return body['client_id'] as String;
   }
 
   Future<MidjourneyTokens> _exchangeCode(
-      String cid, String code, String verifier) async {
+    String cid,
+    String code,
+    String verifier,
+  ) async {
     final res = await _http.post(
       Uri.parse(tokenEndpoint),
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -247,10 +253,12 @@ class MidjourneyAuth {
     );
     if (res.statusCode != 200) {
       throw MidjourneyException(
-          'Token exchange failed: ${res.statusCode} ${res.body}');
+        'Token exchange failed: ${res.statusCode} ${res.body}',
+      );
     }
     return MidjourneyTokens.fromTokenResponse(
-        jsonDecode(res.body) as Map<String, dynamic>);
+      jsonDecode(res.body) as Map<String, dynamic>,
+    );
   }
 
   Future<void> _refresh() async {
@@ -276,7 +284,8 @@ class MidjourneyAuth {
       return;
     }
     final tokens = MidjourneyTokens.fromTokenResponse(
-        jsonDecode(res.body) as Map<String, dynamic>);
+      jsonDecode(res.body) as Map<String, dynamic>,
+    );
     _tokens = tokens;
     await _saveTokens(tokens);
   }
@@ -301,7 +310,7 @@ class MidjourneyAuth {
     return base64Url.encode(data).replaceAll('=', '');
   }
 
-  static String _s256(String verifier) =>
-      base64Url.encode(sha256.convert(utf8.encode(verifier)).bytes)
-          .replaceAll('=', '');
+  static String _s256(String verifier) => base64Url
+      .encode(sha256.convert(utf8.encode(verifier)).bytes)
+      .replaceAll('=', '');
 }

@@ -102,10 +102,7 @@ class _TurnablePageDemoScreenState extends State<TurnablePageDemoScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  caption,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                Text(caption, style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 4),
                 Text(
                   'Page $pageIndex of ${_pageCount - 1}',

@@ -20,6 +20,9 @@ dependencies:
   just_audio: ^0.10.5
   path_provider: ^2.1.6
   rive: ^0.14.8
+  supabase_flutter: ^2.15.0
+  flutter_riverpod: ^3.3.2
+  go_router: ^17.3.0
 
 # Pinned: turnable_page 1.0.0 uses the removed `Pdfrx.getCacheDirectory` setter,
 # which only exists in pdfrx 2.1.x (it became `cacheDirectoryPath` in later 2.x).

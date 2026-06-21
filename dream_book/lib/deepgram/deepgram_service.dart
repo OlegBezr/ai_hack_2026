@@ -28,10 +28,11 @@ class DeepgramException implements Exception {
 /// See `docs/deepgram.md` for the verified request/response shapes.
 class DeepgramService {
   DeepgramService({String? apiKey, http.Client? httpClient})
-      : _apiKey = apiKey ??
-            dotenv.maybeGet('DEEPGRAM_KEY') ??
-            dotenv.maybeGet('DEEPGRAM_API_KEY'),
-        _http = httpClient ?? http.Client();
+    : _apiKey =
+          apiKey ??
+          dotenv.maybeGet('DEEPGRAM_KEY') ??
+          dotenv.maybeGet('DEEPGRAM_API_KEY'),
+      _http = httpClient ?? http.Client();
 
   static const _listenEndpoint = 'https://api.deepgram.com/v1/listen';
   static const _speakEndpoint = 'https://api.deepgram.com/v1/speak';
@@ -71,17 +72,13 @@ class DeepgramService {
     String contentType = 'audio/wav',
     String model = _sttModel,
   }) async {
-    final uri = Uri.parse(_listenEndpoint).replace(queryParameters: {
-      'model': model,
-      'smart_format': 'true',
-    });
+    final uri = Uri.parse(
+      _listenEndpoint,
+    ).replace(queryParameters: {'model': model, 'smart_format': 'true'});
 
     final res = await _http.post(
       uri,
-      headers: {
-        'Authorization': 'Token $_key',
-        'Content-Type': contentType,
-      },
+      headers: {'Authorization': 'Token $_key', 'Content-Type': contentType},
       body: audioBytes,
     );
 
@@ -94,8 +91,10 @@ class DeepgramService {
 
     final json = jsonDecode(res.body) as Map<String, dynamic>;
     try {
-      final alt = (((json['results'] as Map)['channels'] as List).first
-          as Map)['alternatives'] as List;
+      final alt =
+          (((json['results'] as Map)['channels'] as List).first
+                  as Map)['alternatives']
+              as List;
       return ((alt.first as Map)['transcript'] as String?)?.trim() ?? '';
     } catch (_) {
       throw DeepgramException('Unexpected listen response: ${res.body}');
@@ -106,13 +105,10 @@ class DeepgramService {
   ///
   /// Feed the result to an audio player (the demo writes it to a temp file and
   /// plays it with just_audio). Call the player's `stop()` to barge in.
-  Future<Uint8List> speak(
-    String text, {
-    String model = _ttsModel,
-  }) async {
-    final uri = Uri.parse(_speakEndpoint).replace(queryParameters: {
-      'model': model,
-    });
+  Future<Uint8List> speak(String text, {String model = _ttsModel}) async {
+    final uri = Uri.parse(
+      _speakEndpoint,
+    ).replace(queryParameters: {'model': model});
 
     final res = await _http.post(
       uri,
