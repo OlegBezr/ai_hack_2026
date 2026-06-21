@@ -62,6 +62,12 @@ Deno.serve(async (req) => {
       throw { error: "Midjourney returned no images", status: 502 } as ErrorResponse;
     }
 
+    // MJ returns a 2x2 grid (4 takes on the prompt); we auto-pick #1. The full
+    // set is still returned to the caller in `images` below.
+    // TODO(optional): let the user pick from the grid instead of auto-#1 —
+    // show `images` in the UI, then stamp the chosen URL. Backend already
+    // returns the array; only the Flutter picker is missing. MJ variance is
+    // high, so #1 is often not the best of the 4.
     const illustrationUrl = images[0];
     console.log(`Generated illustration for page ${pageId}: ${illustrationUrl}`);
 
