@@ -57,17 +57,6 @@
       "port": 5180
     },
     {
-      "name": "ts-dream-book",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "run",
-        "--prefix",
-        "/Users/olegbezr/Code/ai_hack_2026/ts_dream_book",
-        "dev"
-      ],
-      "port": 5181
-    },
-    {
       "name": "dreambook-static",
       "runtimeExecutable": "python3",
       "runtimeArgs": [
