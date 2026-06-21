@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:turnable_page/turnable_page.dart';
 
+import '../../audio/background_music.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/magical_widgets.dart';
 import '../data/models.dart';
@@ -38,6 +39,22 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   final PageFlipController _controller = PageFlipController();
 
+  @override
+  void initState() {
+    super.initState();
+    // Reading mode is silent: pause the app-wide soundtrack while here.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => ref.read(backgroundMusicProvider.notifier).pause(),
+    );
+  }
+
+  @override
+  void dispose() {
+    // Resume the soundtrack when leaving the reader (respects mute state).
+    ref.read(backgroundMusicProvider.notifier).ensureStarted();
+    super.dispose();
+  }
+
   void _exit() {
     if (context.canPop()) {
       context.pop();
@@ -51,6 +68,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     final storyAsync = ref.watch(storyProvider(widget.storyId));
 
     return MagicScaffold(
+      // Reading mode is silent — no floating music controls here.
+      showMusicControls: false,
       appBar: AppBar(
         leading: IconButton(
           tooltip: 'Close',

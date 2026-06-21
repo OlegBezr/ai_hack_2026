@@ -1,33 +1,61 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../audio/background_music.dart';
+import '../audio/music_controls.dart';
 import 'app_theme.dart';
 import 'magical_background.dart';
 
 /// A [Scaffold] that floats on the shared twilight [MagicalBackground]. Use it
 /// in place of a plain Scaffold to get the magical backdrop for free.
-class MagicScaffold extends StatelessWidget {
+///
+/// By default it also overlays the floating [MusicControls] (bottom-left) and
+/// keeps the app-wide soundtrack playing. Screens that should be silent — the
+/// reader — pass `showMusicControls: false` and pause the music themselves.
+class MagicScaffold extends ConsumerWidget {
   const MagicScaffold({
     super.key,
     this.appBar,
     required this.body,
     this.floatingActionButton,
+    this.showMusicControls = true,
   });
 
   final PreferredSizeWidget? appBar;
   final Widget body;
   final Widget? floatingActionButton;
+  final bool showMusicControls;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (showMusicControls) {
+      // Keep the soundtrack running on every ordinary screen. Idempotent, so
+      // re-running it per build is harmless; the first tap satisfies browser
+      // autoplay if the initial attempt was blocked.
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => ref.read(backgroundMusicProvider.notifier).ensureStarted(),
+      );
+    }
     return MagicalBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBodyBehindAppBar: true,
         appBar: appBar,
         floatingActionButton: floatingActionButton,
-        body: body,
+        body: showMusicControls
+            ? Stack(
+                children: [
+                  Positioned.fill(child: body),
+                  const Positioned(
+                    left: 12,
+                    bottom: 12,
+                    child: SafeArea(child: MusicControls()),
+                  ),
+                ],
+              )
+            : body,
       ),
     );
   }

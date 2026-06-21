@@ -10,15 +10,6 @@ import 'stories/supabase_config.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  // NOTE: rive_native (RiveNative.init) is intentionally NOT initialized here.
-  // Its web init blocks the isolate and hangs app startup; the Rive demo is
-  // disabled for now. Re-add init guarded per-platform if the demo is revived.
-  // Loads bundled dream_book/.env (MJ_ACCESS_TOKEN / MJ_REFRESH_TOKEN /
-  // MJ_CLIENT_ID). isOptional => app still runs (interactive OAuth) if absent.
-  await dotenv.load(fileName: '.env', isOptional: true);
-  // Initialize Supabase (defaults to the local stack; override via dart-define).
-  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
   await SentryFlutter.init(
     (options) {
       options.dsn =
@@ -37,11 +28,22 @@ Future<void> main() async {
       options.replay.sessionSampleRate = 0.1;
       options.replay.onErrorSampleRate = 1.0;
     },
-    appRunner: () =>
-        runApp(ProviderScope(child: SentryWidget(child: const MainApp()))),
+    // All binding init and runApp happen inside Sentry's guarded zone so the
+    // Flutter bindings are initialized in the same zone runApp runs in —
+    // otherwise Flutter logs a "Zone mismatch" error.
+    appRunner: () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      // NOTE: rive_native (RiveNative.init) is intentionally NOT initialized
+      // here. Its web init blocks the isolate and hangs app startup; the Rive
+      // demo is disabled for now. Re-add init guarded per-platform if revived.
+      // Loads bundled dream_book/.env (MJ_ACCESS_TOKEN / MJ_REFRESH_TOKEN /
+      // MJ_CLIENT_ID). isOptional => app still runs (interactive OAuth) if absent.
+      await dotenv.load(fileName: '.env', isOptional: true);
+      // Initialize Supabase (defaults to local stack; override via dart-define).
+      await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+      runApp(ProviderScope(child: SentryWidget(child: const MainApp())));
+    },
   );
-  // TODO: Remove this line after sending the first sample event to sentry.
-  await Sentry.captureException(StateError('This is a sample exception.'));
 }
 
 class MainApp extends ConsumerWidget {

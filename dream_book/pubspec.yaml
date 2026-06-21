@@ -42,6 +42,7 @@ flutter:
   assets:
     - .env
     - assets/rive/
+    - assets/audio/
 
 sentry:
   upload_debug_symbols: true
