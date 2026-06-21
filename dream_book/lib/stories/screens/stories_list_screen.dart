@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../profile/data/profile_repository.dart';
 import '../auth/auth_providers.dart';
 import '../data/models.dart';
 import '../data/stories_repository.dart';
@@ -92,6 +93,7 @@ class StoriesListScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('My Stories'),
         actions: [
+          const _ProfileButton(),
           IconButton(
             tooltip: 'Refresh',
             icon: const Icon(Icons.refresh),
@@ -141,10 +143,22 @@ class StoriesListScreen extends ConsumerWidget {
                         ),
                         title: Text(story.title),
                         subtitle: Text('${story.pages.length} page(s)'),
-                        trailing: IconButton(
-                          tooltip: 'Delete',
-                          icon: const Icon(Icons.delete_outline),
-                          onPressed: () => _deleteStory(context, ref, story),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              tooltip: 'Read',
+                              icon: const Icon(Icons.auto_stories),
+                              onPressed: () =>
+                                  context.go('/stories/${story.id}/read'),
+                            ),
+                            IconButton(
+                              tooltip: 'Delete',
+                              icon: const Icon(Icons.delete_outline),
+                              onPressed: () =>
+                                  _deleteStory(context, ref, story),
+                            ),
+                          ],
                         ),
                         onTap: () => context.go('/stories/${story.id}'),
                       ),
@@ -173,6 +187,40 @@ void _showSnack(BuildContext context, String message, {bool isError = false}) {
           : null,
     ),
   );
+}
+
+/// App-bar entry point to the profile screen: a circular avatar showing the
+/// user's initial. Reads the saved name (falls back to email) for the letter.
+class _ProfileButton extends ConsumerWidget {
+  const _ProfileButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final name = ref.watch(profileProvider).value?.name;
+    final email = ref.watch(sessionProvider)?.user.email;
+    final source = (name != null && name.trim().isNotEmpty) ? name : email;
+    final initial = (source != null && source.trim().isNotEmpty)
+        ? source.trim().characters.first.toUpperCase()
+        : '?';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: IconButton(
+        tooltip: 'Profile',
+        onPressed: () => context.push('/profile'),
+        icon: CircleAvatar(
+          radius: 15,
+          backgroundColor: theme.colorScheme.primaryContainer,
+          foregroundColor: theme.colorScheme.onPrimaryContainer,
+          child: Text(
+            initial,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _EmptyState extends StatelessWidget {

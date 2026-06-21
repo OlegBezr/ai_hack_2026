@@ -6,7 +6,9 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../home_page.dart';
+import '../profile/screens/profile_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/reader_screen.dart';
 import 'screens/stories_list_screen.dart';
 import 'screens/story_editor_screen.dart';
 
@@ -40,8 +42,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       final loc = state.matchedLocation;
       final atLogin = loc == '/stories/login';
       final inStories = loc.startsWith('/stories');
+      final inProfile = loc.startsWith('/profile');
+      final requiresAuth = (inStories && !atLogin) || inProfile;
 
-      if (!loggedIn && inStories && !atLogin) {
+      if (!loggedIn && requiresAuth) {
         return '/stories/login';
       }
       if (loggedIn && atLogin) {
@@ -56,6 +60,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const LoginScreen(),
       ),
       GoRoute(
+        path: '/profile',
+        builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
         path: '/stories',
         builder: (context, state) => const StoriesListScreen(),
       ),
@@ -63,6 +71,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/stories/:id',
         builder: (context, state) =>
             StoryEditorScreen(storyId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/stories/:id/read',
+        builder: (context, state) =>
+            ReaderScreen(storyId: state.pathParameters['id']!),
       ),
     ],
   );
