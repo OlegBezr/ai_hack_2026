@@ -39,19 +39,23 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   final PageFlipController _controller = PageFlipController();
 
+  // Cached once while the widget is alive. Riverpod 3 forbids touching `ref`
+  // inside dispose(), so we must hold the long-lived controller directly to be
+  // able to resume the soundtrack as the reader is torn down.
+  late final BackgroundMusicController _music;
+
   @override
   void initState() {
     super.initState();
+    _music = ref.read(backgroundMusicProvider.notifier);
     // Reading mode is silent: pause the app-wide soundtrack while here.
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => ref.read(backgroundMusicProvider.notifier).pause(),
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) => _music.pause());
   }
 
   @override
   void dispose() {
     // Resume the soundtrack when leaving the reader (respects mute state).
-    ref.read(backgroundMusicProvider.notifier).ensureStarted();
+    _music.ensureStarted();
     super.dispose();
   }
 
