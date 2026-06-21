@@ -26,7 +26,7 @@ How to run the Supabase stack and its edge functions locally for this monorepo.
 
 - [Docker](https://docs.docker.com/get-docker/) running (the local stack runs in containers).
 - [Supabase CLI](https://supabase.com/docs/guides/local-development) — `brew install supabase/tap/supabase`.
-- [Deno 2](https://deno.com/) (only needed if you run the edge functions or the
+- [Deno 2](https://deno.com/) - `brew install deno` (only needed if you run the edge functions or the
   dev email hook outside the CLI's bundled runtime).
 
 All `supabase` commands below are run from the repo root (the `supabase/`
