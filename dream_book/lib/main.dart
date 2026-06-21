@@ -7,6 +7,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'stories/router.dart';
 import 'stories/supabase_config.dart';
+import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,7 +52,8 @@ class MainApp extends ConsumerWidget {
     final router = ref.watch(goRouterProvider);
     return MaterialApp.router(
       title: 'dream_book',
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.indigo),
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.build(),
       routerConfig: router,
     );
   }

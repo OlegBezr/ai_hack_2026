@@ -5,18 +5,18 @@ import 'demos/deepgram_demo.dart';
 import 'demos/midjourney_demo.dart';
 import 'demos/rive_book_demo.dart';
 import 'demos/turnable_page_demo.dart';
+import 'theme/app_theme.dart';
+import 'theme/magical_widgets.dart';
 
-/// Simple landing page that routes to the app's demo screens.
+/// Enchanted landing page — routes to the app's demo screens.
 ///
-/// This is intentionally lightweight — a launcher we'll grow into a real
-/// product later. Each entry is a card that pushes a self-contained demo.
+/// A whimsical launcher we'll grow into a real product later. Each entry is a
+/// glass card that pushes a self-contained demo.
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     final demos = <_DemoEntry>[
       _DemoEntry(
         title: 'Turnable Page',
@@ -44,60 +44,126 @@ class HomePage extends StatelessWidget {
       ),
     ];
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('dream_book · Demos')),
-      body: Center(
-        child: ConstrainedBox(
-          // Keep the launcher readable on wide web/desktop windows.
-          constraints: const BoxConstraints(maxWidth: 560),
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Card(
-                clipBehavior: Clip.antiAlias,
-                color: theme.colorScheme.primaryContainer,
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  leading: CircleAvatar(
-                    backgroundColor: theme.colorScheme.primary,
-                    foregroundColor: theme.colorScheme.onPrimary,
-                    child: const Icon(Icons.auto_stories),
-                  ),
-                  title: Text(
-                    'My Stories (Login)',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Sign in to create and edit your stories.',
-                    style: TextStyle(
-                      color: theme.colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                  trailing: Icon(
-                    Icons.chevron_right,
-                    color: theme.colorScheme.onPrimaryContainer,
-                  ),
-                  onTap: () => context.go('/stories'),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Text(
-                  'Pick a demo',
-                  style: theme.textTheme.headlineSmall,
-                ),
-              ),
-              for (final demo in demos) ...[
-                _DemoCard(entry: demo),
+    return MagicScaffold(
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 36, 20, 28),
+              children: [
                 const SizedBox(height: 12),
+                const MagicWordmark(text: 'Dream Book', fontSize: 42),
+                const SizedBox(height: 10),
+                Text(
+                  'Where your stories come to life',
+                  textAlign: TextAlign.center,
+                  style: AppTheme.serifFont(
+                    fontSize: 19,
+                    fontStyle: FontStyle.italic,
+                    color: MagicColors.textMuted,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                _PrimaryPortal(onTap: () => context.go('/stories')),
+                const SizedBox(height: 28),
+                Row(
+                  children: [
+                    const _Sparkle(),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Pick a spell',
+                      style: AppTheme.displayFont(fontSize: 18, letterSpacing: 1),
+                    ),
+                    const SizedBox(width: 10),
+                    const _Sparkle(),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                for (final demo in demos) ...[
+                  _DemoCard(entry: demo),
+                  const SizedBox(height: 14),
+                ],
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The hero call-to-action — a glowing portal into the user's own stories.
+class _PrimaryPortal extends StatelessWidget {
+  const _PrimaryPortal({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const RadialGradient(
+                colors: [MagicColors.gold, MagicColors.amber],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: MagicColors.gold.withValues(alpha: 0.5),
+                  blurRadius: 20,
+                ),
+              ],
+            ),
+            child: const Icon(Icons.auto_stories, color: Color(0xFF2A1B05)),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'My Stories',
+                  style: AppTheme.displayFont(fontSize: 20),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Sign in to weave and edit your tales.',
+                  style: AppTheme.bodyFont(
+                    fontSize: 13,
+                    color: MagicColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right, color: MagicColors.gold),
+        ],
+      ),
+    );
+  }
+}
+
+class _Sparkle extends StatelessWidget {
+  const _Sparkle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        height: 1,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              MagicColors.lilac.withValues(alpha: 0),
+              MagicColors.lilac.withValues(alpha: 0.5),
+              MagicColors.lilac.withValues(alpha: 0),
             ],
           ),
         ),
@@ -127,22 +193,46 @@ class _DemoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          backgroundColor: theme.colorScheme.primaryContainer,
-          foregroundColor: theme.colorScheme.onPrimaryContainer,
-          child: Icon(entry.icon),
-        ),
-        title: Text(entry.title, style: theme.textTheme.titleMedium),
-        subtitle: Text(entry.subtitle),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: entry.builder)),
+    return GlassCard(
+      onTap: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: entry.builder)),
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: MagicColors.lilac.withValues(alpha: 0.16),
+              border: Border.all(
+                color: MagicColors.lilac.withValues(alpha: 0.4),
+              ),
+            ),
+            child: Icon(entry.icon, color: MagicColors.lilac, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(entry.title, style: AppTheme.bodyFont(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                )),
+                const SizedBox(height: 3),
+                Text(
+                  entry.subtitle,
+                  style: AppTheme.bodyFont(
+                    fontSize: 12.5,
+                    color: MagicColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right, color: MagicColors.lilac),
+        ],
       ),
     );
   }

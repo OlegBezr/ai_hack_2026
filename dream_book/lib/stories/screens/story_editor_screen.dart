@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 
+import '../../theme/app_theme.dart';
+import '../../theme/magical_widgets.dart';
 import '../data/models.dart';
 import '../data/stories_repository.dart';
 
@@ -243,7 +245,7 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return MagicScaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -264,7 +266,9 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(color: MagicColors.gold),
+      );
     }
     if (_error != null) {
       return Center(
@@ -283,12 +287,13 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
     }
     final story = _story!;
     final theme = Theme.of(context);
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 640),
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
+    return SafeArea(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 90, 16, 16),
+            children: [
             Row(
               children: [
                 Expanded(
@@ -356,7 +361,8 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
                 ),
               ),
             const SizedBox(height: 80),
-          ],
+            ],
+          ),
         ),
       ),
     );

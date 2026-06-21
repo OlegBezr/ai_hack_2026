@@ -6,6 +6,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8123", "--directory", ".claude/cors_probe"],
       "port": 8123
+    },
+    {
+      "name": "dreambook-web",
+      "runtimeExecutable": "fvm",
+      "runtimeArgs": ["flutter", "run", "-d", "web-server", "--web-port", "8088", "--web-hostname", "127.0.0.1"],
+      "port": 8088
     }
   ]
 }

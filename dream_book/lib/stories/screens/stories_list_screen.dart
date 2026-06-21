@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../profile/data/profile_repository.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/magical_widgets.dart';
 import '../auth/auth_providers.dart';
 import '../data/models.dart';
 import '../data/stories_repository.dart';
@@ -89,7 +91,7 @@ class StoriesListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final storiesAsync = ref.watch(storiesProvider);
 
-    return Scaffold(
+    return MagicScaffold(
       appBar: AppBar(
         title: const Text('My Stories'),
         actions: [
@@ -115,7 +117,9 @@ class StoriesListScreen extends ConsumerWidget {
         label: const Text('New story'),
       ),
       body: storiesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: MagicColors.gold),
+        ),
         error: (e, _) => _ErrorState(
           message: '$e',
           onRetry: () => ref.read(storiesProvider.notifier).refresh(),
@@ -125,45 +129,27 @@ class StoriesListScreen extends ConsumerWidget {
             return const _EmptyState();
           }
           return RefreshIndicator(
+            color: MagicColors.gold,
+            backgroundColor: MagicColors.nightMid,
             onRefresh: () => ref.read(storiesProvider.notifier).refresh(),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 560),
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: stories.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (context, i) {
-                    final story = stories[i];
-                    return Card(
-                      clipBehavior: Clip.antiAlias,
-                      child: ListTile(
-                        leading: const CircleAvatar(
-                          child: Icon(Icons.menu_book),
-                        ),
-                        title: Text(story.title),
-                        subtitle: Text('${story.pages.length} page(s)'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              tooltip: 'Read',
-                              icon: const Icon(Icons.auto_stories),
-                              onPressed: () =>
-                                  context.push('/read/${story.id}'),
-                            ),
-                            IconButton(
-                              tooltip: 'Delete',
-                              icon: const Icon(Icons.delete_outline),
-                              onPressed: () =>
-                                  _deleteStory(context, ref, story),
-                            ),
-                          ],
-                        ),
+            child: SafeArea(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 100, 16, 100),
+                    itemCount: stories.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (context, i) {
+                      final story = stories[i];
+                      return _StoryCard(
+                        story: story,
                         onTap: () => context.go('/stories/${story.id}'),
-                      ),
-                    );
-                  },
+                        onRead: () => context.push('/read/${story.id}'),
+                        onDelete: () => _deleteStory(context, ref, story),
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -196,7 +182,6 @@ class _ProfileButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final name = ref.watch(profileProvider).value?.name;
     final email = ref.watch(sessionProvider)?.user.email;
     final source = (name != null && name.trim().isNotEmpty) ? name : email;
@@ -209,15 +194,111 @@ class _ProfileButton extends ConsumerWidget {
       child: IconButton(
         tooltip: 'Profile',
         onPressed: () => context.push('/profile'),
-        icon: CircleAvatar(
-          radius: 15,
-          backgroundColor: theme.colorScheme.primaryContainer,
-          foregroundColor: theme.colorScheme.onPrimaryContainer,
+        icon: Container(
+          width: 32,
+          height: 32,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const RadialGradient(
+              colors: [MagicColors.gold, MagicColors.amber],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: MagicColors.gold.withValues(alpha: 0.4),
+                blurRadius: 14,
+              ),
+            ],
+          ),
           child: Text(
             initial,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            style: AppTheme.bodyFont(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF2A1B05),
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _StoryCard extends StatelessWidget {
+  const _StoryCard({
+    required this.story,
+    required this.onTap,
+    required this.onRead,
+    required this.onDelete,
+  });
+
+  final Story story;
+  final VoidCallback onTap;
+  final VoidCallback onRead;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      onTap: onTap,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const RadialGradient(
+                colors: [MagicColors.gold, MagicColors.amber],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: MagicColors.gold.withValues(alpha: 0.4),
+                  blurRadius: 16,
+                ),
+              ],
+            ),
+            child: const Icon(Icons.menu_book, color: Color(0xFF2A1B05)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  story.title,
+                  style: AppTheme.serifFont(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${story.pages.length} page(s)',
+                  style: AppTheme.bodyFont(
+                    fontSize: 12.5,
+                    color: MagicColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Read',
+            icon: const Icon(Icons.auto_stories),
+            color: MagicColors.gold,
+            onPressed: onRead,
+          ),
+          IconButton(
+            tooltip: 'Delete',
+            icon: const Icon(Icons.delete_outline),
+            color: MagicColors.textMuted,
+            onPressed: onDelete,
+          ),
+        ],
       ),
     );
   }
@@ -232,14 +313,21 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.auto_stories, size: 64),
-          const SizedBox(height: 12),
-          Text(
-            'No stories yet',
-            style: Theme.of(context).textTheme.titleMedium,
+          const Icon(
+            Icons.auto_stories,
+            size: 72,
+            color: MagicColors.gold,
           ),
-          const SizedBox(height: 4),
-          const Text('Tap "New story" to create one.'),
+          const SizedBox(height: 16),
+          Text(
+            'Your library awaits',
+            style: AppTheme.displayFont(fontSize: 22),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Tap "New story" to begin your first tale.',
+            style: AppTheme.bodyFont(color: MagicColors.textMuted),
+          ),
         ],
       ),
     );
@@ -260,9 +348,17 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 48),
+            const Icon(
+              Icons.error_outline,
+              size: 48,
+              color: MagicColors.danger,
+            ),
             const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: AppTheme.bodyFont(color: MagicColors.textMuted),
+            ),
             const SizedBox(height: 16),
             FilledButton(onPressed: onRetry, child: const Text('Retry')),
           ],

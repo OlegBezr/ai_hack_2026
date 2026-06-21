@@ -3,11 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:turnable_page/turnable_page.dart';
 
+import '../../theme/app_theme.dart';
+import '../../theme/magical_widgets.dart';
 import '../data/models.dart';
 import '../data/stories_repository.dart';
 
 /// Page-flip "reading" experience for a single story, rendered as a book using
-/// the `turnable_page` package in double (spread) mode.
+/// the `turnable_page` package in double (spread) mode. The book floats on the
+/// shared twilight [MagicalBackground] for the magical look.
 ///
 /// Leaf layout. In `turnable_page` double mode the book is always shown as an
 /// open spread and leaves pair up as (0,1), (2,3), (4,5)… — i.e. EVEN leaves are
@@ -47,8 +50,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   Widget build(BuildContext context) {
     final storyAsync = ref.watch(storyProvider(widget.storyId));
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF2B2118),
+    return MagicScaffold(
       appBar: AppBar(
         leading: IconButton(
           tooltip: 'Close',
@@ -61,7 +63,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         )),
       ),
       body: storyAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: MagicColors.gold),
+        ),
         error: (e, _) => _ErrorState(message: '$e', onBack: _exit),
         data: (story) => _BookView(
           story: story,
@@ -89,8 +93,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
           child: Text(
             story.title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontFamilyFallback: ['serif'],
+            style: AppTheme.serifFont(
               fontSize: 34,
               fontWeight: FontWeight.w600,
               color: Colors.black87,
@@ -130,37 +133,39 @@ class _BookView extends StatelessWidget {
   Widget build(BuildContext context) {
     final leaves = buildLeaves(story);
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1100, maxHeight: 760),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              TurnablePage(
-                controller: controller,
-                pageCount: leaves.length,
-                pageViewMode: PageViewMode.double,
-                builder: (context, index, constraints) => leaves[index],
-              ),
-              Positioned(
-                left: 0,
-                child: _NavButton(
-                  icon: Icons.chevron_left,
-                  tooltip: 'Previous',
-                  onPressed: () => controller.previousPage(),
+    return SafeArea(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1100, maxHeight: 760),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                TurnablePage(
+                  controller: controller,
+                  pageCount: leaves.length,
+                  pageViewMode: PageViewMode.double,
+                  builder: (context, index, constraints) => leaves[index],
                 ),
-              ),
-              Positioned(
-                right: 0,
-                child: _NavButton(
-                  icon: Icons.chevron_right,
-                  tooltip: 'Next',
-                  onPressed: () => controller.nextPage(),
+                Positioned(
+                  left: 0,
+                  child: _NavButton(
+                    icon: Icons.chevron_left,
+                    tooltip: 'Previous',
+                    onPressed: () => controller.previousPage(),
+                  ),
                 ),
-              ),
-            ],
+                Positioned(
+                  right: 0,
+                  child: _NavButton(
+                    icon: Icons.chevron_right,
+                    tooltip: 'Next',
+                    onPressed: () => controller.nextPage(),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -168,6 +173,7 @@ class _BookView extends StatelessWidget {
   }
 }
 
+/// A glassy circular page-turn button with a soft golden glow.
 class _NavButton extends StatelessWidget {
   const _NavButton({
     required this.icon,
@@ -181,14 +187,27 @@ class _NavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.black.withValues(alpha: 0.45),
-      shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
-      child: IconButton(
-        tooltip: tooltip,
-        icon: Icon(icon, color: Colors.white),
-        onPressed: onPressed,
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: MagicColors.gold.withValues(alpha: 0.35),
+            blurRadius: 18,
+          ),
+        ],
+      ),
+      child: Material(
+        color: MagicColors.nightTop.withValues(alpha: 0.55),
+        shape: CircleBorder(
+          side: BorderSide(color: MagicColors.lilac.withValues(alpha: 0.4)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: IconButton(
+          tooltip: tooltip,
+          icon: Icon(icon, color: MagicColors.gold),
+          onPressed: onPressed,
+        ),
       ),
     );
   }
@@ -252,13 +271,21 @@ class _CoverPage extends StatelessWidget {
         child: Text(
           story.title,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontFamilyFallback: ['serif'],
+          style: AppTheme.displayFont(
             fontSize: 44,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w700,
             color: Colors.white,
+          ).copyWith(
             shadows: [
-              Shadow(blurRadius: 12, color: Colors.black, offset: Offset(0, 2)),
+              const Shadow(
+                blurRadius: 12,
+                color: Colors.black,
+                offset: Offset(0, 2),
+              ),
+              Shadow(
+                color: MagicColors.gold.withValues(alpha: 0.5),
+                blurRadius: 24,
+              ),
             ],
           ),
         ),
@@ -364,7 +391,9 @@ class _IllustrationPage extends StatelessWidget {
         height: double.infinity,
         loadingBuilder: (context, child, progress) {
           if (progress == null) return child;
-          return const Center(child: CircularProgressIndicator());
+          return const Center(
+            child: CircularProgressIndicator(color: MagicColors.gold),
+          );
         },
         errorBuilder: (context, error, stack) => const Center(
           child: Icon(Icons.broken_image_outlined,
@@ -389,12 +418,12 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.white70),
+            const Icon(Icons.error_outline, size: 48, color: MagicColors.danger),
             const SizedBox(height: 12),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70),
+              style: AppTheme.bodyFont(color: MagicColors.textMuted),
             ),
             const SizedBox(height: 16),
             FilledButton(onPressed: onBack, child: const Text('Back')),

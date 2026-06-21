@@ -2,6 +2,15 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "dreambook-local",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/arinasokolova/code/ai_hack_2026/dream_book && exec fvm flutter run -d web-server --web-hostname 127.0.0.1 --web-port 8088"
+      ],
+      "port": 8088
+    },
+    {
       "name": "dream_book-web",
       "runtimeExecutable": "bash",
       "runtimeArgs": [

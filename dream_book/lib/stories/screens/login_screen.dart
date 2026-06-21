@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../theme/app_theme.dart';
+import '../../theme/magical_widgets.dart';
 import '../auth/auth_providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -79,85 +81,116 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Scaffold(
+    return MagicScaffold(
       appBar: AppBar(title: const Text('Sign in')),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: ListView(
-            shrinkWrap: true,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            children: [
-              Text('My Stories', style: theme.textTheme.headlineSmall),
-              const SizedBox(height: 8),
-              Text(
-                _codeSent
-                    ? 'Enter the 6-digit code we emailed you.'
-                    : 'Sign in with a one-time email code.',
-                style: theme.textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 24),
-              TextField(
-                controller: _emailController,
-                enabled: !_codeSent && !_loading,
-                keyboardType: TextInputType.emailAddress,
-                autofillHints: const [AutofillHints.email],
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.email_outlined),
-                ),
-                onSubmitted: (_) => _codeSent ? null : _sendCode(),
-              ),
-              if (_codeSent) ...[
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _codeController,
-                  enabled: !_loading,
-                  keyboardType: TextInputType.number,
-                  maxLength: 6,
-                  decoration: const InputDecoration(
-                    labelText: '6-digit code',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.pin_outlined),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const MagicWordmark(
+                    text: 'Dream Book',
+                    fontSize: 34,
+                    icon: Icons.auto_stories,
                   ),
-                  onSubmitted: (_) => _verify(),
-                ),
-              ],
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
-              ],
-              const SizedBox(height: 20),
-              FilledButton(
-                onPressed: _loading ? null : (_codeSent ? _verify : _sendCode),
-                child: _loading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(_codeSent ? 'Verify' : 'Send code'),
+                  const SizedBox(height: 28),
+                  GlassCard(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          _codeSent ? 'Check your owl post' : 'Enter the gate',
+                          style: AppTheme.displayFont(fontSize: 20),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _codeSent
+                              ? 'Enter the 6-digit code we emailed you.'
+                              : 'Sign in with a one-time email code.',
+                          style: AppTheme.bodyFont(
+                            fontSize: 13,
+                            color: MagicColors.textMuted,
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+                        TextField(
+                          controller: _emailController,
+                          enabled: !_codeSent && !_loading,
+                          keyboardType: TextInputType.emailAddress,
+                          autofillHints: const [AutofillHints.email],
+                          decoration: const InputDecoration(
+                            labelText: 'Email',
+                            prefixIcon: Icon(Icons.email_outlined),
+                          ),
+                          onSubmitted: (_) => _codeSent ? null : _sendCode(),
+                        ),
+                        if (_codeSent) ...[
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: _codeController,
+                            enabled: !_loading,
+                            keyboardType: TextInputType.number,
+                            maxLength: 6,
+                            decoration: const InputDecoration(
+                              labelText: '6-digit code',
+                              prefixIcon: Icon(Icons.pin_outlined),
+                            ),
+                            onSubmitted: (_) => _verify(),
+                          ),
+                        ],
+                        if (_error != null) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            _error!,
+                            style: AppTheme.bodyFont(
+                              fontSize: 13,
+                              color: MagicColors.danger,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 20),
+                        FilledButton(
+                          onPressed: _loading
+                              ? null
+                              : (_codeSent ? _verify : _sendCode),
+                          child: _loading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFF2A1B05),
+                                  ),
+                                )
+                              : Text(_codeSent ? 'Verify' : 'Send code'),
+                        ),
+                        if (_codeSent) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              TextButton(
+                                onPressed: _loading ? null : _changeEmail,
+                                child: const Text('Change email'),
+                              ),
+                              TextButton(
+                                onPressed: _loading ? null : _sendCode,
+                                child: const Text('Resend code'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              if (_codeSent) ...[
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(
-                      onPressed: _loading ? null : _changeEmail,
-                      child: const Text('Change email'),
-                    ),
-                    TextButton(
-                      onPressed: _loading ? null : _sendCode,
-                      child: const Text('Resend code'),
-                    ),
-                  ],
-                ),
-              ],
-            ],
+            ),
           ),
         ),
       ),

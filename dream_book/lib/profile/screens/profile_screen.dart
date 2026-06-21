@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../stories/auth/auth_providers.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/magical_widgets.dart';
 import '../data/profile_model.dart';
 import '../data/profile_repository.dart';
 
@@ -77,80 +79,154 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final profileAsync = ref.watch(profileProvider);
     final email = ref.watch(sessionProvider)?.user.email;
 
-    return Scaffold(
+    final name = _nameController.text.trim();
+    final initial = name.isNotEmpty
+        ? name.characters.first.toUpperCase()
+        : (email != null && email.isNotEmpty
+              ? email.characters.first.toUpperCase()
+              : '?');
+
+    return MagicScaffold(
       appBar: AppBar(
         title: const Text('Profile'),
         leading: BackButton(onPressed: _close),
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: profileAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => _ErrorState(
-              message: '$e',
-              onRetry: () => ref.invalidate(profileProvider),
-            ),
-            data: (profile) {
-              _seed(profile);
-              return ListView(
-                padding: const EdgeInsets.all(24),
-                children: [
-                  // ── Read-only account info ─────────────────────────────
-                  // Email is rendered as plain info (not an input) so the only
-                  // thing that looks editable on this screen is the name field.
-                  if (email != null) ...[
-                    const _SectionLabel('Account'),
-                    const SizedBox(height: 8),
-                    Card(
-                      margin: EdgeInsets.zero,
-                      child: ListTile(
-                        leading: const Icon(Icons.email_outlined),
-                        title: const Text('Email'),
-                        subtitle: Text(email),
-                        trailing: Tooltip(
-                          message: "Can't be changed",
-                          child: Icon(
-                            Icons.lock_outline,
-                            size: 18,
-                            color: Theme.of(context).colorScheme.outline,
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: profileAsync.when(
+              loading: () => const Center(
+                child: CircularProgressIndicator(color: MagicColors.gold),
+              ),
+              error: (e, _) => _ErrorState(
+                message: '$e',
+                onRetry: () => ref.invalidate(profileProvider),
+              ),
+              data: (profile) {
+                _seed(profile);
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(24, 100, 24, 24),
+                  children: [
+                    // ── Avatar header ──────────────────────────────────────
+                    Center(
+                      child: Container(
+                        width: 88,
+                        height: 88,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const RadialGradient(
+                            colors: [MagicColors.gold, MagicColors.amber],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: MagicColors.gold.withValues(alpha: 0.45),
+                              blurRadius: 28,
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          initial,
+                          style: AppTheme.displayFont(
+                            fontSize: 40,
+                            color: const Color(0xFF2A1B05),
                           ),
                         ),
                       ),
                     ),
                     const SizedBox(height: 28),
-                  ],
 
-                  // ── Editable display name ──────────────────────────────
-                  const _SectionLabel('Display name'),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _nameController,
-                    textCapitalization: TextCapitalization.words,
-                    textInputAction: TextInputAction.done,
-                    decoration: const InputDecoration(
-                      hintText: 'Your display name',
-                      helperText: 'How your name appears in the app.',
-                      prefixIcon: Icon(Icons.badge_outlined),
-                      border: OutlineInputBorder(),
+                    // ── Read-only account info ─────────────────────────────
+                    // Email is rendered as plain info (not an input) so the
+                    // only thing that looks editable here is the name field.
+                    if (email != null) ...[
+                      const _SectionLabel('Account'),
+                      const SizedBox(height: 8),
+                      GlassCard(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.email_outlined,
+                              color: MagicColors.lilac,
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Email',
+                                    style: AppTheme.bodyFont(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    email,
+                                    style: AppTheme.bodyFont(
+                                      fontSize: 13,
+                                      color: MagicColors.textMuted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Tooltip(
+                              message: "Can't be changed",
+                              child: Icon(
+                                Icons.lock_outline,
+                                size: 18,
+                                color: MagicColors.textMuted.withValues(
+                                  alpha: 0.7,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                    ],
+
+                    // ── Editable display name ──────────────────────────────
+                    const _SectionLabel('Display name'),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _nameController,
+                      textCapitalization: TextCapitalization.words,
+                      textInputAction: TextInputAction.done,
+                      onChanged: (_) => setState(() {}),
+                      decoration: const InputDecoration(
+                        hintText: 'Your display name',
+                        helperText: 'How your name appears in the app.',
+                        prefixIcon: Icon(Icons.badge_outlined),
+                      ),
+                      onSubmitted: (_) => _saving ? null : _save(),
                     ),
-                    onSubmitted: (_) => _saving ? null : _save(),
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton.icon(
-                    onPressed: _saving ? null : _save,
-                    icon: _saving
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.save),
-                    label: Text(_saving ? 'Saving…' : 'Save'),
-                  ),
-                ],
-              );
-            },
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      onPressed: _saving ? null : _save,
+                      icon: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Color(0xFF2A1B05),
+                              ),
+                            )
+                          : const Icon(Icons.save),
+                      label: Text(_saving ? 'Saving…' : 'Save'),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -166,13 +242,13 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Text(
       text.toUpperCase(),
-      style: theme.textTheme.labelSmall?.copyWith(
-        color: theme.colorScheme.primary,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.8,
+      style: AppTheme.bodyFont(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        color: MagicColors.gold,
+        letterSpacing: 1.0,
       ),
     );
   }
@@ -191,9 +267,13 @@ class _ErrorState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline, size: 48),
+          const Icon(Icons.error_outline, size: 48, color: MagicColors.danger),
           const SizedBox(height: 12),
-          Text(message, textAlign: TextAlign.center),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: AppTheme.bodyFont(color: MagicColors.textMuted),
+          ),
           const SizedBox(height: 16),
           FilledButton(onPressed: onRetry, child: const Text('Retry')),
         ],
