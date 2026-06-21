@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "Sentry": {
+      "url": "https://mcp.sentry.dev/mcp/ai-hack-2026/javascript-sveltekit",
+      "type": "http"
+    }
+  }
+}

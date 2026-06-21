@@ -1,0 +1,28 @@
+# ngrok tunnel config for the Dream Book Svelte dev server.
+#
+# One-time setup (per machine):
+#   1. brew install ngrok            (or: https://ngrok.com/download)
+#   2. Sign in at https://dashboard.ngrok.com and copy your authtoken, then:
+#        ngrok config add-authtoken <YOUR_TOKEN>
+#      (stored in ngrok's global config — kept OUT of this repo on purpose)
+#   3. Reserve your free static domain:
+#        https://dashboard.ngrok.com/domains  ->  "Create Domain"
+#      You get one free *.ngrok-free.app subdomain that never changes.
+#   4. Put that domain in the `domain:` field below.
+#
+# Run it (from svelte_dream_book/):
+#   pnpm dev                         # terminal 1 — starts Vite on :5190
+#   VITE_TUNNEL_HOST=<your-domain> pnpm dev   # ^ use this form so HMR works over wss
+#   pnpm tunnel                      # terminal 2 — opens the tunnel
+#
+# The public URL is HTTPS, which is required for getUserMedia (voice/mic).
+
+version: "3"
+
+tunnels:
+  dreambook:
+    proto: http
+    addr: 5190
+    # Your reserved free domain — replace the placeholder. This is what keeps
+    # the address stable: without it ngrok hands you a new random URL each run.
+    domain: REPLACE-WITH-YOUR-RESERVED.ngrok-free.app
