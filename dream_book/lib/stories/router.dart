@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../home_page.dart';
 import '../profile/screens/profile_screen.dart';
+import 'screens/create_story_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/reader_screen.dart';
 import 'screens/stories_list_screen.dart';
@@ -44,7 +45,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       final inStories = loc.startsWith('/stories');
       final inProfile = loc.startsWith('/profile');
       final inRead = loc.startsWith('/read');
-      final requiresAuth = (inStories && !atLogin) || inProfile || inRead;
+      final inCreate = loc.startsWith('/create');
+      final requiresAuth =
+          (inStories && !atLogin) || inProfile || inRead || inCreate;
 
       if (!loggedIn && requiresAuth) {
         return '/stories/login';
@@ -67,6 +70,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/stories',
         builder: (context, state) => const StoriesListScreen(),
+      ),
+      GoRoute(
+        path: '/create',
+        builder: (context, state) => const CreateStoryScreen(),
       ),
       GoRoute(
         path: '/stories/:id',

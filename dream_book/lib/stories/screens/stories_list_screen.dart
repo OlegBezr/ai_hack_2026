@@ -111,10 +111,26 @@ class StoriesListScreen extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _createStory(context, ref),
-        icon: const Icon(Icons.add),
-        label: const Text('New story'),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: 'tell_story',
+            onPressed: () => context.push('/create'),
+            backgroundColor: MagicColors.gold,
+            foregroundColor: const Color(0xFF2A1B05),
+            icon: const Icon(Icons.mic),
+            label: const Text('Tell a story'),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton.extended(
+            heroTag: 'new_story',
+            onPressed: () => _createStory(context, ref),
+            icon: const Icon(Icons.add),
+            label: const Text('Blank story'),
+          ),
+        ],
       ),
       body: storiesAsync.when(
         loading: () => const Center(

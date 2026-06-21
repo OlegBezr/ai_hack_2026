@@ -134,6 +134,61 @@ class StoryPage {
   }
 }
 
+/// A page returned by the `compose-story` edge function: the persisted page id
+/// plus the (transient) Midjourney prompt for its illustration. The prompt is
+/// not stored in the DB — it's only used to immediately request the artwork.
+class ComposedPagePrompt {
+  const ComposedPagePrompt({
+    required this.id,
+    required this.position,
+    required this.text,
+    required this.illustrationPrompt,
+  });
+
+  final String id;
+  final int position;
+  final String text;
+  final String illustrationPrompt;
+
+  factory ComposedPagePrompt.fromJson(Map<String, dynamic> json) {
+    return ComposedPagePrompt(
+      id: json['id'] as String,
+      position: (json['position'] as num?)?.toInt() ?? 0,
+      text: (json['text'] as String?) ?? '',
+      illustrationPrompt: (json['illustration_prompt'] as String?) ?? '',
+    );
+  }
+}
+
+/// Result of `compose-story`: a freshly created story (id + title) and the
+/// per-page prompts to drive parallel illustration/audio generation, plus a
+/// cover-art prompt for `generate-texture`.
+class ComposedStoryResult {
+  const ComposedStoryResult({
+    required this.storyId,
+    required this.title,
+    required this.coverPrompt,
+    required this.pages,
+  });
+
+  final String storyId;
+  final String title;
+  final String coverPrompt;
+  final List<ComposedPagePrompt> pages;
+
+  factory ComposedStoryResult.fromJson(Map<String, dynamic> json) {
+    final rawPages = (json['pages'] as List<dynamic>? ?? const [])
+        .map((e) => ComposedPagePrompt.fromJson(Map<String, dynamic>.from(e as Map)))
+        .toList();
+    return ComposedStoryResult(
+      storyId: json['story_id'] as String,
+      title: (json['title'] as String?) ?? 'Untitled',
+      coverPrompt: (json['cover_prompt'] as String?) ?? '',
+      pages: rawPages,
+    );
+  }
+}
+
 class Story {
   const Story({
     required this.id,

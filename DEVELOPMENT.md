@@ -51,6 +51,20 @@ This is the important one for the backend. Create it with:
 ```bash
 # Deepgram TTS (used by generate-audio)
 DEEPGRAM_KEY=<deepgram api key>
+
+# Anthropic / Claude (used by compose-story to split a transcript into pages)
+ANTHROPIC_API_KEY=<anthropic api key>   # from https://console.anthropic.com/settings/keys
+
+# Sentry for the edge functions (OPTIONAL — unset = full no-op, nothing sent).
+# Use a Sentry "Deno" project DSN. Every function is wrapped by serveWithSentry
+# in _shared/sentry.ts, which gives each request its own scope, structured logs,
+# performance spans + PII scrubbing, reports 5xx/unexpected errors, and flushes
+# before the isolate freezes. Only SENTRY_DSN is required to turn it on; the
+# rest are optional tuning.
+SENTRY_DSN=<sentry deno dsn>
+SENTRY_ENVIRONMENT=production         # e.g. production / staging (default production)
+SENTRY_RELEASE=<git sha>              # release/version string for grouping
+SENTRY_TRACES_SAMPLE_RATE=1.0         # 0..1 performance trace sampling (default 1.0)
 ```
 
 Notes:
@@ -124,6 +138,7 @@ The functions in this repo:
 | --- | --- | --- |
 | `generate-illustration` | [supabase/functions/generate-illustration/index.ts](supabase/functions/generate-illustration/index.ts) | Calls Midjourney, stamps `page.illustration_url` |
 | `generate-audio` | [supabase/functions/generate-audio/index.ts](supabase/functions/generate-audio/index.ts) | Deepgram TTS → uploads MP3 to the `audio` bucket → stamps `page.audio_url` |
+| `compose-story` | [supabase/functions/compose-story/index.ts](supabase/functions/compose-story/index.ts) | Claude (Anthropic) splits a spoken/typed transcript into a titled, page-by-page story (with per-page art prompts), creates the `story` + `page` rows, and returns the prompts so the app can fan out audio/illustration generation |
 | `hello-world` | [supabase/functions/hello-world/index.ts](supabase/functions/hello-world/index.ts) | Smoke-test endpoint |
 
 Both real functions have `verify_jwt = true`, so calls need a logged-in user's

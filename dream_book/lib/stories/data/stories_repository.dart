@@ -107,6 +107,29 @@ class StoriesRepository {
     return null;
   }
 
+  /// Composes a full storybook from a spoken/typed [transcript]: Claude splits
+  /// it into pages (each with an illustration prompt), then the story + pages
+  /// are persisted. Returns the new story id plus the per-page prompts so the
+  /// caller can fan out audio + illustration generation. Media is NOT generated
+  /// here — call [generateAudio] / [generateIllustration] / [generateCoverTexture].
+  Future<ComposedStoryResult> composeStory(
+    String transcript, {
+    String? title,
+    int? pageCount,
+  }) async {
+    final body = <String, dynamic>{'transcript': transcript};
+    if (title != null && title.trim().isNotEmpty) body['title'] = title.trim();
+    if (pageCount != null) body['page_count'] = pageCount;
+
+    final res = await _client.functions.invoke('compose-story', body: body);
+    final data = res.data;
+    if (data is! Map || data['story_id'] is! String) {
+      final err = data is Map ? data['error'] : null;
+      throw Exception(err ?? 'compose-story returned an unexpected response');
+    }
+    return ComposedStoryResult.fromJson(Map<String, dynamic>.from(data));
+  }
+
   /// Generates narration audio for [pageId]; returns the public audio URL.
   Future<String?> generateAudio(String pageId, {String? text}) async {
     final body = <String, dynamic>{'page_id': pageId};
