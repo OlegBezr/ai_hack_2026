@@ -1,7 +1,7 @@
 // @ts-nocheck -- vendored third-party (patched StPageFlip); not type-checked here.
 import {UI} from "./UI";
 import {PageFlip} from "../PageFlip";
-import {FlipSetting} from "../Settings";
+import type { FlipSetting } from "../Settings";
 
 /**
  * UI for canvas mode

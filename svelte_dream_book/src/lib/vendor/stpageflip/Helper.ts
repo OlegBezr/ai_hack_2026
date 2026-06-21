@@ -1,5 +1,5 @@
 // @ts-nocheck -- vendored third-party (patched StPageFlip); not type-checked here.
-import { Point, Rect, Segment } from './BasicTypes';
+import type { Point, Rect, Segment } from './BasicTypes';
 
 /**
  * A class containing helping mathematical methods

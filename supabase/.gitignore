@@ -9,3 +9,6 @@
 
 # Edge function secrets (auto-loaded by `supabase start`)
 functions/.env
+
+# Remote deploy secrets (pushed via `supabase secrets set --env-file`)
+.env.prod

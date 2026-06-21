@@ -2,7 +2,7 @@
 import { CanvasRender } from '../Render/CanvasRender';
 import { Page, PageDensity, PageOrientation } from './Page';
 import { Render } from '../Render/Render';
-import { Point } from '../BasicTypes';
+import type { Point } from '../BasicTypes';
 
 /**
  * Class representing a book page as an image on Canvas

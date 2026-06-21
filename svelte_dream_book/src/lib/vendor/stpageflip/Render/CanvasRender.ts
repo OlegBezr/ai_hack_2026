@@ -3,7 +3,7 @@ import { Orientation, Render } from './Render';
 import { PageFlip } from '../PageFlip';
 import { FlipDirection } from '../Flip/Flip';
 import { PageOrientation } from '../Page/Page';
-import { FlipSetting } from '../Settings';
+import type { FlipSetting } from '../Settings';
 
 /**
  * Class responsible for rendering the Canvas book

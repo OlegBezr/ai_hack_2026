@@ -1,6 +1,6 @@
 // @ts-nocheck -- vendored third-party (patched StPageFlip); not type-checked here.
 import { Render } from '../Render/Render';
-import { Point } from '../BasicTypes';
+import type { Point } from '../BasicTypes';
 
 /**
  * State of the page on the basis of which rendering

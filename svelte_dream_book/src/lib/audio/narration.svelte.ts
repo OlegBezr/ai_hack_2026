@@ -11,7 +11,10 @@ export class Narration {
   position = $state(0); // seconds
   duration = $state(0); // seconds
 
-  private currentUrl: string | null = null;
+  // Reactive: the NarrationBar reads `hasAudio` (derived from this) to toggle the
+  // "No narration on this page" message and the disabled button states. A plain
+  // field wouldn't trigger re-renders on page turns, leaving the bar stale.
+  private currentUrl = $state<string | null>(null);
   private audio: HTMLAudioElement | null = null;
 
   private el(): HTMLAudioElement {

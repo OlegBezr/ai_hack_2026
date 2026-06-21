@@ -3,7 +3,7 @@ import { Page, PageDensity, PageOrientation } from './Page';
 import { Render } from '../Render/Render';
 import { Helper } from '../Helper';
 import { FlipDirection } from '../Flip/Flip';
-import { Point } from '../BasicTypes';
+import type { Point } from '../BasicTypes';
 
 /**
  * Class representing a book page as a HTML Element

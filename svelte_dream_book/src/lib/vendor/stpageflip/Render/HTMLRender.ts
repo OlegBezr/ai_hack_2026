@@ -5,7 +5,7 @@ import { FlipDirection } from '../Flip/Flip';
 import { PageDensity, PageOrientation } from '../Page/Page';
 import { HTMLPage } from '../Page/HTMLPage';
 import { Helper } from '../Helper';
-import { FlipSetting } from '../Settings';
+import type { FlipSetting } from '../Settings';
 
 /**
  * Class responsible for rendering the HTML book

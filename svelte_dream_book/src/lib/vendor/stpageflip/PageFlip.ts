@@ -2,7 +2,7 @@
 import { PageCollection } from './Collection/PageCollection';
 import { ImagePageCollection } from './Collection/ImagePageCollection';
 import { HTMLPageCollection } from './Collection/HTMLPageCollection';
-import { PageRect, Point } from './BasicTypes';
+import type { PageRect, Point } from './BasicTypes';
 import { Flip, FlipCorner, FlippingState } from './Flip/Flip';
 import { Orientation, Render } from './Render/Render';
 import { CanvasRender } from './Render/CanvasRender';
@@ -12,7 +12,7 @@ import { Helper } from './Helper';
 import { Page } from './Page/Page';
 import { EventObject } from './Event/EventObject';
 import { HTMLRender } from './Render/HTMLRender';
-import { FlipSetting, Settings } from './Settings';
+import { type FlipSetting, Settings } from './Settings';
 import { UI } from './UI/UI';
 
 import './Style/stPageFlip.css';

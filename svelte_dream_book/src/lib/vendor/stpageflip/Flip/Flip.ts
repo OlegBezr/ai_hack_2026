@@ -2,7 +2,7 @@
 import { Orientation, Render } from '../Render/Render';
 import { PageFlip } from '../PageFlip';
 import { Helper } from '../Helper';
-import { PageRect, Point } from '../BasicTypes';
+import type { PageRect, Point } from '../BasicTypes';
 import { FlipCalculation } from './FlipCalculation';
 import { Page, PageDensity } from '../Page/Page';
 

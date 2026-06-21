@@ -1,7 +1,7 @@
 // @ts-nocheck -- vendored third-party (patched StPageFlip); not type-checked here.
 import { PageFlip } from '../PageFlip';
-import { Point } from '../BasicTypes';
-import { FlipSetting, SizeType } from '../Settings';
+import type { Point } from '../BasicTypes';
+import { type FlipSetting, SizeType } from '../Settings';
 import { FlipCorner, FlippingState } from '../Flip/Flip';
 import { Orientation } from '../Render/Render';
 
