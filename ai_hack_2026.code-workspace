@@ -18,6 +18,10 @@
       "path": "./dream_book"
     },
     {
+      "name": "svelte_dream_book",
+      "path": "./svelte_dream_book"
+    },
+    {
       "name": "supabase-functions",
       "path": "./supabase/functions"
     },
