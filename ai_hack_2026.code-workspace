@@ -10,15 +10,19 @@
   // and nowhere else.
   "folders": [
     {
-      "name": "ROOT (flutter)",
+      "name": "ROOT",
       "path": "."
     },
     {
-      "name": "supabase-functions (deno)",
+      "name": "dream_book",
+      "path": "./dream_book"
+    },
+    {
+      "name": "supabase-functions",
       "path": "./supabase/functions"
     },
     {
-      "name": "dev-email-auth-hook (deno)",
+      "name": "dev-email-auth-hook",
       "path": "./tools/dev-email-auth-hook"
     }
   ],

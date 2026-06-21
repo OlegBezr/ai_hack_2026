@@ -1,3 +1,43 @@
 {
-  "dart.flutterSdkPath": ".fvm/versions/3.44.2"
+  // ---- Flutter / Dart (repo root) ----
+  "dart.flutterSdkPath": ".fvm/versions/3.44.2",
+
+  // ---- Deno (scoped to the edge functions + the deno tool) ----
+  // enablePaths turns the Deno language server ON for ONLY these folders,
+  // so go-to-definition / find-references / type-checking work there, while
+  // the Dart analyzer keeps owning the rest of the repo. This works whether
+  // you open the repo as a plain folder OR via ai_hack_2026.code-workspace.
+  "deno.enablePaths": [
+    "supabase/functions",
+    "tools/dev-email-auth-hook"
+  ],
+  "deno.path": "/opt/homebrew/bin/deno",
+  "deno.lint": true,
+  "deno.unstable": [
+    "bare-node-builtins",
+    "byonm",
+    "sloppy-imports",
+    "unsafe-proto",
+    "webgpu",
+    "broadcast-channel",
+    "worker-options",
+    "cron",
+    "kv",
+    "ffi",
+    "fs",
+    "http",
+    "net"
+  ],
+  // Only TS/JSON files in this repo live under the Deno paths above, so it is
+  // safe to make Deno the default formatter for them at the root level.
+  "editor.formatOnSave": true,
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  }
 }

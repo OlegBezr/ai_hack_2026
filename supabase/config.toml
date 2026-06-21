@@ -233,6 +233,15 @@ otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 otp_expiry = 3600
 
+# Local dev: intercept all auth emails and dump the OTP to the edge-runtime
+# console instead of actually sending them. Run the receiver with:
+#   deno run --allow-net tools/dev-email-auth-hook/main.ts
+# then watch its output (or the supabase_edge_runtime_* docker logs) for the code.
+[auth.hook.send_email]
+enabled = true
+uri = "http://host.docker.internal:4000/"
+secrets = "v1,whsec_VmZGNUpZRlZzbGFDS08zc3pUOVlaVjBraGRDZFJ5ZVBzN09QWkVjMjFGOD0K" # random hardcoded secret for local dev
+
 # Use a production-ready SMTP server
 # [auth.email.smtp]
 # enabled = true
