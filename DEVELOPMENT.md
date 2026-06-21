@@ -41,7 +41,7 @@ teammate for the current values (they are not in the repo).
 
 | File | Purpose | Loaded by | Git-ignored in |
 | --- | --- | --- | --- |
-| `supabase/functions/.env` | Secrets injected into edge functions (Midjourney + Deepgram) | `supabase start` auto-loads it | `supabase/.gitignore` |
+| `supabase/functions/.env` | Secrets injected into edge functions (Deepgram; Midjourney lives in Vault) | `supabase start` auto-loads it | `supabase/.gitignore` |
 | `dream_book/.env` | Frontend's copy of the Midjourney seed tokens (only if you run the Flutter app against the MCP directly) | Flutter app | `dream_book/.gitignore` |
 
 ### `supabase/functions/.env`
@@ -55,10 +55,10 @@ DEEPGRAM_KEY=<deepgram api key>
 
 Notes:
 
-- These are a **seed**, not a permanent credential. Midjourney rotates refresh
-  tokens on every refresh, so the live token set is persisted to Supabase Vault
-  after the first refresh (see [below](#seeding-the-midjourney-key-in-vault)).
-  The `MJ_*` values are only read when the Vault entry is still empty.
+- The Midjourney token set is **not** in this file. It lives in Supabase Vault
+  (secret `midjourney_oauth`), because Midjourney rotates refresh tokens on every
+  refresh and the function persists the rotated set there. Seed it separately —
+  see [below](#seeding-the-midjourney-key-in-vault).
 - `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are
   **not** listed here — the local stack injects them into functions
   automatically. You only set those when deploying to a hosted project.
@@ -148,20 +148,24 @@ through two `SECURITY DEFINER` wrappers granted to `service_role`,
 `public.get_midjourney_oauth()` / `public.set_midjourney_oauth(jsonb)`, created
 by [supabase/migrations/20260620231045_midjourney_vault_rotation.sql](supabase/migrations/20260620231045_midjourney_vault_rotation.sql).
 
-**You usually don't have to do anything.** On the first generation, if the Vault
-secret is empty, the function falls back to the `MJ_*` values from
-`supabase/functions/.env`, refreshes, and writes the rotated set into Vault
-automatically. From then on the env seed is ignored.
+**Vault is the only source of truth.** The function reads the full token set
+(`access_token`, `refresh_token`, `client_id`) from the `midjourney_oauth` Vault
+secret — there is no `MJ_*` env fallback. So a fresh project (empty Vault secret)
+must be seeded once before the first generation, otherwise the refresh fails with
+`Cannot refresh Midjourney token: refresh_token / client_id missing from the
+Vault secret 'midjourney_oauth'`.
 
-If you want to seed it explicitly (e.g. you have a known-good token set, or the
-env seed has already been spent elsewhere), insert it directly. Connect to local
-Postgres and run or do it from supabase studio:
+Seed it by inserting the token set directly. Connect to local Postgres and run,
+or do it from Supabase Studio. All three fields are required — `client_id` is the
+public client you registered with Midjourney (see
+[docs/midjourney.md](docs/midjourney.md)):
 
 ```sql
 select public.set_midjourney_oauth(
   jsonb_build_object(
     'access_token',  '<access token>',
     'refresh_token', '<refresh token>',
+    'client_id',     '<client id>',
     'expires_at',    null
   )
 );
@@ -174,7 +178,7 @@ You can run this from Studio's SQL editor (http://127.0.0.1:54323) or:
 
 ```bash
 psql "postgres://postgres:postgres@127.0.0.1:54322/postgres" \
-  -c "select public.set_midjourney_oauth(jsonb_build_object('access_token','...','refresh_token','...','expires_at',null));"
+  -c "select public.set_midjourney_oauth(jsonb_build_object('access_token','...','refresh_token','...','client_id','...','expires_at',null));"
 ```
 
 > The `vault` schema is not exposed over the Data API, which is why the wrappers
@@ -222,8 +226,10 @@ require the app — use the `curl` smoke test above instead.
   the stack isn't started. Start the stack first, then serve with the env file.
 - **Midjourney calls fail with `invalid_grant`** — the seed refresh token has
   been spent (the same shared account is used by Claude Code's MCP and the
-  Flutter app). Get a fresh token set and re-seed Vault (see above), or update
-  `supabase/functions/.env` and clear the `midjourney_oauth` Vault secret so the
-  new seed is picked up.
+  Flutter app). Get a fresh token set and re-seed Vault with
+  `set_midjourney_oauth` (see above) — that overwrites the stale set in place.
+- **Midjourney calls fail with `refresh_token / client_id missing from the Vault
+  secret`** — the `midjourney_oauth` secret is empty or missing `client_id`. Seed
+  it (see above).
 - **Schema looks stale** — `supabase db reset` re-runs every migration and the
   seed from scratch (this wipes local data).

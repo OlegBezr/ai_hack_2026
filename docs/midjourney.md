@@ -242,7 +242,7 @@ The demo (`main.dart`) uses `MidjourneyAuth.fromDotenv()`.
 The seed dies after the app's first refresh, or if Claude Code's MCP (same account)
 refreshes in the meantime. To mint a fresh set, run the one-time OAuth helper at
 `/tmp/mj_auth.py` (PKCE + local-callback server), open the printed authorize URL,
-log into Midjourney, then copy `access_token` / `refresh_token` / `_client_id` from
+log into Midjourney, then copy `access_token` / `refresh_token` / `client_id` from
 `/tmp/mj_token.json` into `dream_book/.env`. The flow:
 
 ```

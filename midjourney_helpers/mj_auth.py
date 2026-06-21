@@ -88,7 +88,7 @@ tok = post_form(BASE + "/token", {
     "client_id": client_id,
     "code_verifier": verifier,
 })
-tok["_client_id"] = client_id
+tok["client_id"] = client_id
 with open(STATE_FILE, "w") as f:
     json.dump(tok, f, indent=2)
 print("TOKEN_SAVED", flush=True)

@@ -1,9 +1,15 @@
 # Midjourney credential generation (for agents)
 
-`./mj_auth.py` mints a fresh Midjourney OAuth token set (access + refresh) via the
-official MCP server's OAuth 2.1 flow (Dynamic Client Registration + PKCE). Use it
-whenever you need working Midjourney creds (e.g. to seed `dream_book/.env`), or when
-the existing refresh token is dead (`invalid_grant: refresh token does not exist`).
+`./mj_auth.py` mints a fresh Midjourney OAuth token set (access + refresh + the
+`client_id` it registered) via the official MCP server's OAuth 2.1 flow (Dynamic
+Client Registration + PKCE). Use it whenever you need working Midjourney creds, or
+when the existing refresh token is dead (`invalid_grant: refresh token does not
+exist`). The minted set seeds two places:
+- **Flutter direct path** → `dream_book/.env` (`MJ_ACCESS_TOKEN`,
+  `MJ_REFRESH_TOKEN`, `MJ_CLIENT_ID`).
+- **Edge-function path** → the `midjourney_oauth` Supabase Vault secret, which
+  requires `access_token`, `refresh_token`, **and** `client_id`.
+  See "Seeding the Midjourney key in Vault" in `DEVELOPMENT.md`.
 
 ## What it does
 1. `POST https://mcp.midjourney.com/register` → public `client_id` (no secret).
@@ -44,10 +50,11 @@ The file looks like:
   "expires_in": 3600,
   "scope": "media:create mcp:access",
   "refresh_token": "<token>",
-  "_client_id": "<uuid>"
+  "client_id": "<uuid>"
 }
 ```
-(`_client_id` is added by the script; the rest come straight from the `/token` response.)
+(`client_id` is added by the script — it's the DCR `client_id`, required for both
+seed destinations above; the rest come straight from the `/token` response.)
 
 ## Progress markers (stdout / `/tmp/mj_auth.log`)
 - `AUTHORIZE_URL_READY` — URL written to `/tmp/mj_authurl.txt`.
