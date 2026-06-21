@@ -1272,10 +1272,9 @@ packages:
   turnable_page:
     dependency: "direct main"
     description:
-      name: turnable_page
-      sha256: ac25768dd0e27d190218716d2535eb4746c631decc47f3979e1ffb40e90f3abf
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/turnable_page"
+      relative: true
+    source: path
     version: "1.0.0"
   typed_data:
     dependency: transitive
