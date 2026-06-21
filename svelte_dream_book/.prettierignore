@@ -1,0 +1,8 @@
+# Generated / vendored — not ours to format
+.svelte-kit
+build
+package
+node_modules
+src/lib/vendor
+src/lib/database.types.ts
+pnpm-lock.yaml

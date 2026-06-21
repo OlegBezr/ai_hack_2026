@@ -20,6 +20,54 @@
       "port": 8099
     },
     {
+      "name": "svelte-dream-book",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--dir",
+        "/Users/olegbezr/Code/ai_hack_2026/svelte_dream_book",
+        "dev"
+      ],
+      "port": 5190
+    },
+    {
+      "name": "svelte-dream-book-verify",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--dir",
+        "/Users/olegbezr/Code/ai_hack_2026/svelte_dream_book",
+        "exec",
+        "vite",
+        "dev",
+        "--port",
+        "5193",
+        "--strictPort",
+        "--host"
+      ],
+      "port": 5193
+    },
+    {
+      "name": "js-books-playground",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "--prefix",
+        "/Users/olegbezr/Code/js_books/playground",
+        "dev"
+      ],
+      "port": 5180
+    },
+    {
+      "name": "ts-dream-book",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "--prefix",
+        "/Users/olegbezr/Code/ai_hack_2026/ts_dream_book",
+        "dev"
+      ],
+      "port": 5181
+    },
+    {
       "name": "dreambook-static",
       "runtimeExecutable": "python3",
       "runtimeArgs": [

@@ -1,0 +1,100 @@
+@import 'tailwindcss';
+
+/* ───────────────────────────────────────────────────────────────────────────
+   "Twilight Storybook" design tokens — ported 1:1 from the Flutter app
+   (lib/theme/app_theme.dart). Tailwind v4 turns each token into utilities,
+   e.g. --color-gold -> bg-gold/text-gold, --font-display -> font-display.
+   ─────────────────────────────────────────────────────────────────────────── */
+@theme {
+  /* Night-sky background gradient stops */
+  --color-night-top: #0b1026; /* deep midnight blue */
+  --color-night-mid: #1a1340; /* royal indigo */
+  --color-night-bottom: #2c1b4d; /* dusk violet */
+
+  /* Surfaces */
+  --color-surface: #221a44;
+
+  /* Warm magical accents — candlelight / enchanted gold */
+  --color-gold: #f4c766;
+  --color-amber: #e8a94b;
+
+  /* Secondary enchantment — starlit lilac / aurora */
+  --color-lilac: #b79ced;
+  --color-aurora: #7fe0d4;
+
+  /* Text */
+  --color-ink: #f3ecff; /* moonlit white-lilac */
+  --color-ink-muted: #b6abd8; /* hazy lavender */
+  --color-danger: #ff8a9b;
+
+  /* Typography */
+  --font-display: 'Cinzel', serif;
+  --font-serif: 'Cormorant Garamond', serif;
+  --font-body: 'Quicksand', sans-serif;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    color: var(--color-ink);
+    background-color: var(--color-night-top);
+    /* keep iOS from rubber-banding while dragging a page */
+    overscroll-behavior: none;
+  }
+
+  /* Reusable glassy card, equivalent to the Flutter GlassCard. */
+  .glass {
+    background: color-mix(in srgb, var(--color-surface) 55%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-lilac) 18%, transparent);
+    backdrop-filter: blur(12px);
+    border-radius: 1.25rem;
+  }
+}
+
+/* Slow twinkle for the starfield layer. */
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+.animate-twinkle {
+  animation: twinkle 6s ease-in-out infinite;
+}
+
+/* Themed thin scrollbar for scrollable page prose. */
+.thin-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-lilac) 35%, transparent);
+  border-radius: 3px;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   StPageFlip page surfaces. The library moves these into its own wrapper, so
+   page chrome lives here rather than in React. Per-story colors are applied
+   inline by the reader from story.style.
+   ─────────────────────────────────────────────────────────────────────────── */
+.df-page {
+  box-sizing: border-box;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: #fdfaf3;
+  color: #2a2433;
+}
+
+.df-page--hard {
+  background: var(--color-night-mid);
+}
