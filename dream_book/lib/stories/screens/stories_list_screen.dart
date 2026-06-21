@@ -150,7 +150,7 @@ class StoriesListScreen extends ConsumerWidget {
                               tooltip: 'Read',
                               icon: const Icon(Icons.auto_stories),
                               onPressed: () =>
-                                  context.go('/stories/${story.id}/read'),
+                                  context.push('/read/${story.id}'),
                             ),
                             IconButton(
                               tooltip: 'Delete',

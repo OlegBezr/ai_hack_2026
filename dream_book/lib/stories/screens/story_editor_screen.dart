@@ -25,6 +25,25 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
 
   final _titleController = TextEditingController();
   bool _savingTitle = false;
+  bool _generatingCover = false;
+
+  // Story-wide page styling (applies to all pages).
+  StoryStyle _style = const StoryStyle();
+  bool _savingStyle = false;
+
+  // Curated preset swatches for the text/background color pickers.
+  static const List<Color?> _colorSwatches = [
+    null, // default (no override)
+    Color(0xFF000000),
+    Color(0xFFFFFFFF),
+    Color(0xFF5D4037), // brown
+    Color(0xFFB71C1C), // red
+    Color(0xFF1A237E), // indigo
+    Color(0xFFF5EFE0), // cream
+  ];
+
+  static String _hexFromColor(Color color) =>
+      '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}';
 
   @override
   void initState() {
@@ -53,6 +72,7 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
       if (!mounted) return;
       setState(() {
         _story = story;
+        _style = story.style;
         _loading = false;
       });
     } catch (e) {
@@ -93,6 +113,71 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
       _snack('Failed to save title: $e', isError: true);
     } finally {
       if (mounted) setState(() => _savingTitle = false);
+    }
+  }
+
+  /// Prompts for a description and generates the Midjourney cover art.
+  Future<void> _generateCover() async {
+    final story = _story;
+    if (story == null) return;
+    final controller = TextEditingController(text: story.title);
+    final prompt = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cover texture prompt'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            hintText: 'Describe the cover texture...',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+            child: const Text('Generate'),
+          ),
+        ],
+      ),
+    );
+    if (prompt == null || prompt.isEmpty) return;
+
+    setState(() => _generatingCover = true);
+    try {
+      await _repo.generateCoverTexture(story.id, prompt);
+      if (!mounted) return;
+      ref.read(storiesProvider.notifier).refresh();
+      await _load();
+      _snack('Cover texture generated');
+    } catch (e) {
+      _snack('Cover generation failed: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _generatingCover = false);
+    }
+  }
+
+  /// Persists the story-wide style. Built directly (not via copyWith) so any
+  /// field can be cleared back to null.
+  Future<void> _applyStyle(StoryStyle next) async {
+    final story = _story;
+    if (story == null) return;
+    setState(() {
+      _style = next;
+      _savingStyle = true;
+    });
+    try {
+      await _repo.updateStory(story.id, style: next);
+      ref.read(storiesProvider.notifier).refresh();
+      _snack('Style saved');
+    } catch (e) {
+      _snack('Failed to save style: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _savingStyle = false);
     }
   }
 
@@ -197,6 +282,7 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
       );
     }
     final story = _story!;
+    final theme = Theme.of(context);
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 640),
@@ -230,7 +316,23 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            Text('Pages', style: Theme.of(context).textTheme.titleMedium),
+
+            // Cover texture (Midjourney).
+            _buildTextureSection(
+              theme: theme,
+              label: 'Cover',
+              url: story.coverTexture,
+              busy: _generatingCover,
+              buttonLabel: 'Generate cover texture',
+              onGenerate: _generateCover,
+            ),
+            const SizedBox(height: 16),
+
+            // Story-wide page styling.
+            _buildStyleSection(theme),
+            const SizedBox(height: 16),
+
+            Text('Pages', style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             if (story.pages.isEmpty)
               const Padding(
@@ -256,6 +358,415 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
             const SizedBox(height: 80),
           ],
         ),
+      ),
+    );
+  }
+
+  /// A texture (cover or page background) preview + generate button.
+  Widget _buildTextureSection({
+    required ThemeData theme,
+    required String label,
+    required String? url,
+    required bool busy,
+    required String buttonLabel,
+    required VoidCallback onGenerate,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: theme.textTheme.titleMedium),
+        const SizedBox(height: 8),
+        if (url != null) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              url,
+              height: 160,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => const Text('Could not load texture.'),
+              loadingBuilder: (context, child, progress) {
+                if (progress == null) return child;
+                return const SizedBox(
+                  height: 160,
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+        Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            onPressed: busy ? null : onGenerate,
+            icon: busy
+                ? const SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.wallpaper),
+            label: Text(buttonLabel),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Story-wide text styling (applies to every page).
+  Widget _buildStyleSection(ThemeData theme) {
+    final scale = _style.fontSizeScale ?? 1.0;
+    return Card(
+      margin: EdgeInsets.zero,
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        title: Row(
+          children: [
+            const Text('Page text style'),
+            if (_savingStyle) ...[
+              const SizedBox(width: 8),
+              const SizedBox(
+                height: 14,
+                width: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ],
+          ],
+        ),
+        subtitle: const Text('Applies to all pages'),
+        children: [
+          // Font family.
+          Row(
+            children: [
+              const SizedBox(width: 90, child: Text('Font')),
+              Expanded(
+                child: DropdownButton<String?>(
+                  isExpanded: true,
+                  value: _style.fontFamily,
+                  items: const [
+                    DropdownMenuItem(value: null, child: Text('Default')),
+                    DropdownMenuItem(value: 'Serif', child: Text('Serif')),
+                    DropdownMenuItem(value: 'Sans', child: Text('Sans')),
+                    DropdownMenuItem(value: 'Mono', child: Text('Mono')),
+                  ],
+                  onChanged: (value) =>
+                      _applyStyle(_styleWith(fontFamily: value, clearFont: true)),
+                ),
+              ),
+            ],
+          ),
+          // Font size scale.
+          Row(
+            children: [
+              const SizedBox(width: 90, child: Text('Size')),
+              Expanded(
+                child: Slider(
+                  min: 0.8,
+                  max: 2.0,
+                  divisions: 12,
+                  value: scale.clamp(0.8, 2.0),
+                  label: scale.toStringAsFixed(2),
+                  onChanged: (value) => setState(
+                    () => _style = _styleWith(fontSizeScale: value),
+                  ),
+                  onChangeEnd: (value) =>
+                      _applyStyle(_styleWith(fontSizeScale: value)),
+                ),
+              ),
+            ],
+          ),
+          // Text alignment.
+          Align(
+            alignment: Alignment.centerLeft,
+            child: SegmentedButton<String?>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: 'left', icon: Icon(Icons.format_align_left)),
+                ButtonSegment(
+                  value: 'center',
+                  icon: Icon(Icons.format_align_center),
+                ),
+                ButtonSegment(
+                  value: 'right',
+                  icon: Icon(Icons.format_align_right),
+                ),
+                ButtonSegment(
+                  value: 'justify',
+                  icon: Icon(Icons.format_align_justify),
+                ),
+              ],
+              selected: {_style.textAlign ?? 'left'},
+              onSelectionChanged: (selection) =>
+                  _applyStyle(_styleWith(textAlign: selection.first)),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Text color swatches.
+          _buildColorRow(
+            label: 'Text color',
+            selectedHex: _style.textColor,
+            onPick: (hex) =>
+                _applyStyle(_styleWith(textColor: hex, clearText: true)),
+          ),
+          const SizedBox(height: 8),
+          // Page background color swatches.
+          _buildColorRow(
+            label: 'Page background',
+            selectedHex: _style.backgroundColor,
+            onPick: (hex) =>
+                _applyStyle(_styleWith(backgroundColor: hex, clearBg: true)),
+          ),
+          const SizedBox(height: 12),
+          // Live preview.
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _style.resolvedBackgroundColor ?? theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: theme.dividerColor),
+            ),
+            child: Text(
+              'Once upon a time, in a land far away...',
+              textAlign: _style.resolvedTextAlign,
+              style: TextStyle(
+                color: _style.resolvedTextColor,
+                fontSize: 14 * scale,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Builds a new style from the current one, allowing fields to be set to null
+  /// (the `clear*` flags let a null value through instead of being ignored).
+  StoryStyle _styleWith({
+    String? fontFamily,
+    bool clearFont = false,
+    double? fontSizeScale,
+    String? textColor,
+    bool clearText = false,
+    String? backgroundColor,
+    bool clearBg = false,
+    String? textAlign,
+  }) {
+    return StoryStyle(
+      fontFamily: clearFont ? fontFamily : (fontFamily ?? _style.fontFamily),
+      fontSizeScale: fontSizeScale ?? _style.fontSizeScale,
+      textColor: clearText ? textColor : (textColor ?? _style.textColor),
+      backgroundColor:
+          clearBg ? backgroundColor : (backgroundColor ?? _style.backgroundColor),
+      textAlign: textAlign ?? _style.textAlign,
+    );
+  }
+
+  Widget _buildColorRow({
+    required String label,
+    required String? selectedHex,
+    required void Function(String?) onPick,
+  }) {
+    // True when the current value is a custom color (not one of the presets).
+    final isCustom = selectedHex != null &&
+        !_colorSwatches.any((c) =>
+            c != null &&
+            _hexFromColor(c).toUpperCase() == selectedHex.toUpperCase());
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(width: 90, child: Text(label)),
+        Expanded(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final color in _colorSwatches)
+                _buildSwatch(
+                  color: color,
+                  selected: color == null
+                      ? selectedHex == null
+                      : selectedHex?.toUpperCase() ==
+                            _hexFromColor(color).toUpperCase(),
+                  onTap: () =>
+                      onPick(color == null ? null : _hexFromColor(color)),
+                ),
+              // Custom color picker swatch.
+              _buildCustomSwatch(
+                selectedHex: isCustom ? selectedHex : null,
+                onTap: () async {
+                  final hex = await _showCustomColorDialog(selectedHex);
+                  if (hex != null) onPick(hex);
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// The "+" swatch that opens the custom color picker. Shows the picked custom
+  /// color (with a ring) when the current value is a custom one.
+  Widget _buildCustomSwatch({
+    required String? selectedHex,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    final custom = StoryStyle.parseColor(selectedHex);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        height: 28,
+        width: 28,
+        decoration: BoxDecoration(
+          color: custom,
+          shape: BoxShape.circle,
+          gradient: custom == null
+              ? const SweepGradient(
+                  colors: [
+                    Color(0xFFFF0000),
+                    Color(0xFFFFFF00),
+                    Color(0xFF00FF00),
+                    Color(0xFF00FFFF),
+                    Color(0xFF0000FF),
+                    Color(0xFFFF00FF),
+                    Color(0xFFFF0000),
+                  ],
+                )
+              : null,
+          border: Border.all(
+            color: custom != null ? theme.colorScheme.primary : theme.dividerColor,
+            width: custom != null ? 2.5 : 1,
+          ),
+        ),
+        child: Icon(
+          Icons.add,
+          size: 16,
+          color: custom == null ? Colors.white : Colors.white,
+        ),
+      ),
+    );
+  }
+
+  /// A dependency-free RGB color picker. Returns a '#RRGGBB' hex, or null on
+  /// cancel.
+  Future<String?> _showCustomColorDialog(String? currentHex) {
+    var picked = StoryStyle.parseColor(currentHex) ?? const Color(0xFF3F51B5);
+    int chan(double c) => (c * 255).round();
+
+    return showDialog<String>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setLocal) {
+          final r = chan(picked.r);
+          final g = chan(picked.g);
+          final b = chan(picked.b);
+
+          Widget channel(String name, int value, Color tint,
+              Color Function(int) rebuild) {
+            return Row(
+              children: [
+                SizedBox(width: 16, child: Text(name)),
+                Expanded(
+                  child: SliderTheme(
+                    data: SliderThemeData(activeTrackColor: tint),
+                    child: Slider(
+                      min: 0,
+                      max: 255,
+                      divisions: 255,
+                      value: value.toDouble(),
+                      label: '$value',
+                      onChanged: (v) =>
+                          setLocal(() => picked = rebuild(v.round())),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 32,
+                  child: Text('$value', textAlign: TextAlign.end),
+                ),
+              ],
+            );
+          }
+
+          return AlertDialog(
+            title: const Text('Custom color'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: picked,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Theme.of(context).dividerColor),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    _hexFromColor(picked),
+                    style: TextStyle(
+                      color: picked.computeLuminance() > 0.5
+                          ? Colors.black
+                          : Colors.white,
+                      fontFeatures: const [],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                channel('R', r, Colors.red,
+                    (v) => Color.fromARGB(255, v, g, b)),
+                channel('G', g, Colors.green,
+                    (v) => Color.fromARGB(255, r, v, b)),
+                channel('B', b, Colors.blue,
+                    (v) => Color.fromARGB(255, r, g, v)),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () =>
+                    Navigator.of(context).pop(_hexFromColor(picked)),
+                child: const Text('Select'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSwatch({
+    required Color? color,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        height: 28,
+        width: 28,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected ? theme.colorScheme.primary : theme.dividerColor,
+            width: selected ? 2.5 : 1,
+          ),
+        ),
+        // "Default" (null) swatch shows a slash to indicate "no override".
+        child: color == null
+            ? Icon(Icons.block, size: 16, color: theme.hintColor)
+            : null,
       ),
     );
   }
@@ -361,10 +872,7 @@ class _PageEditorState extends State<_PageEditor> {
 
     setState(() => _generatingImage = true);
     try {
-      final url = await widget.repo.generateIllustration(
-        widget.page.id,
-        prompt,
-      );
+      final url = await widget.repo.generateIllustration(widget.page.id, prompt);
       if (!mounted) return;
       setState(() => _illustrationUrl = url);
       widget.snack('Illustration generated');

@@ -43,7 +43,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       final atLogin = loc == '/stories/login';
       final inStories = loc.startsWith('/stories');
       final inProfile = loc.startsWith('/profile');
-      final requiresAuth = (inStories && !atLogin) || inProfile;
+      final inRead = loc.startsWith('/read');
+      final requiresAuth = (inStories && !atLogin) || inProfile || inRead;
 
       if (!loggedIn && requiresAuth) {
         return '/stories/login';
@@ -73,7 +74,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             StoryEditorScreen(storyId: state.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/stories/:id/read',
+        path: '/read/:id',
         builder: (context, state) =>
             ReaderScreen(storyId: state.pathParameters['id']!),
       ),

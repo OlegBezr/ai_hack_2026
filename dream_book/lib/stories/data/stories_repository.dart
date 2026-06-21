@@ -32,9 +32,16 @@ class StoriesRepository {
     return Story.fromJson(row);
   }
 
-  Future<void> updateStory(String id, {String? title}) async {
+  Future<void> updateStory(
+    String id, {
+    String? title,
+    String? coverTexture,
+    StoryStyle? style,
+  }) async {
     final patch = <String, dynamic>{};
     if (title != null) patch['title'] = title;
+    if (coverTexture != null) patch['cover_texture'] = coverTexture;
+    if (style != null) patch['style'] = style.toJson();
     if (patch.isEmpty) return;
     await _client.from('story').update(patch).eq('id', id);
   }
@@ -82,6 +89,20 @@ class StoriesRepository {
     final data = res.data;
     if (data is Map && data['illustration_url'] is String) {
       return data['illustration_url'] as String;
+    }
+    return null;
+  }
+
+  /// Generates the book-cover art for [storyId] via Midjourney and stamps
+  /// `story.cover_texture`. Returns the image URL. Can take tens of seconds.
+  Future<String?> generateCoverTexture(String storyId, String prompt) async {
+    final res = await _client.functions.invoke(
+      'generate-texture',
+      body: {'story_id': storyId, 'prompt': prompt},
+    );
+    final data = res.data;
+    if (data is Map && data['texture_url'] is String) {
+      return data['texture_url'] as String;
     }
     return null;
   }
