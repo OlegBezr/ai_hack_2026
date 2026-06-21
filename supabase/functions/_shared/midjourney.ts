@@ -2,13 +2,13 @@
 // midjourney_client.dart + midjourney_auth.dart + midjourney_models.dart.
 //
 // Protocol: JSON-RPC 2.0 over streamable HTTP (the server replies with SSE).
-// Auth: a shared-account token set seeded from MJ_ACCESS_TOKEN / MJ_REFRESH_TOKEN
-// / MJ_CLIENT_ID. On 401 we refresh using the refresh_token grant and retry
-// once. Midjourney ROTATES refresh tokens (each refresh invalidates the prior
-// one), so the new token set is persisted to Vault (encrypted at rest) via the
-// get_/set_midjourney_oauth wrappers — otherwise the next cold start would
-// reuse a spent refresh token and fail with `invalid_grant`. See the migration
-// `..._midjourney_vault_rotation.sql`.
+// Auth: a shared-account token set (access_token, refresh_token, client_id) held
+// entirely in Supabase Vault and read via the get_/set_midjourney_oauth wrappers.
+// On 401 we refresh using the refresh_token grant and retry once. Midjourney
+// ROTATES refresh tokens (each refresh invalidates the prior one), so the new
+// token set is persisted back to Vault (encrypted at rest) — otherwise the next
+// cold start would reuse a spent refresh token and fail with `invalid_grant`.
+// See the migration `..._midjourney_vault_rotation.sql`.
 
 import { serviceClient } from "./auth.ts";
 
@@ -44,6 +44,7 @@ export interface MidjourneyJob {
 interface MjTokens {
   accessToken: string;
   refreshToken: string;
+  clientId: string;
   /** ISO timestamp, or null when the grant did not report expires_in. */
   expiresAt: string | null;
 }
@@ -60,11 +61,13 @@ async function loadStoredTokens(): Promise<MjTokens | null> {
   const t = data as Record<string, unknown>;
   const accessToken = typeof t.access_token === "string" ? t.access_token : "";
   const refreshToken = typeof t.refresh_token === "string" ? t.refresh_token : "";
+  const clientId = typeof t.client_id === "string" ? t.client_id : "";
   if (!accessToken || !refreshToken) return null;
 
   return {
     accessToken,
     refreshToken,
+    clientId,
     expiresAt: typeof t.expires_at === "string" ? t.expires_at : null,
   };
 }
@@ -79,6 +82,7 @@ async function saveStoredTokens(tokens: MjTokens): Promise<void> {
     tokens: {
       access_token: tokens.accessToken,
       refresh_token: tokens.refreshToken,
+      client_id: tokens.clientId,
       expires_at: tokens.expiresAt,
     },
   });
@@ -93,16 +97,17 @@ async function saveStoredTokens(tokens: MjTokens): Promise<void> {
 // here because the edge function reuses a single client per worker.
 let _rpcId = 0;
 let _initialized = false;
-// Cached token set. Seeded lazily from the durable store (falling back to the
-// MJ_* env secrets the first time the store is empty), replaced on refresh.
+// Cached token set, loaded lazily from the durable Vault store (the single
+// source of truth for access_token / refresh_token / client_id) and replaced
+// on refresh.
 let _accessToken: string | null = null;
 let _refreshToken: string | null = null;
+let _clientId: string | null = null;
 let _tokensLoaded = false;
 
 /**
- * Ensure the in-memory token set is populated. Prefers the persisted store
- * (which holds the latest rotated tokens); falls back to the MJ_* env secrets
- * when the store is still empty, e.g. on first deploy or after re-seeding.
+ * Ensure the in-memory token set is populated from the Vault store, which holds
+ * the latest rotated access_token / refresh_token plus the client_id.
  */
 async function ensureTokensLoaded(): Promise<void> {
   if (_tokensLoaded) return;
@@ -110,9 +115,7 @@ async function ensureTokensLoaded(): Promise<void> {
   if (stored) {
     _accessToken = stored.accessToken;
     _refreshToken = stored.refreshToken;
-  } else {
-    _accessToken = Deno.env.get("MJ_ACCESS_TOKEN") ?? "";
-    _refreshToken = Deno.env.get("MJ_REFRESH_TOKEN") ?? "";
+    _clientId = stored.clientId;
   }
   _tokensLoaded = true;
 }
@@ -123,6 +126,7 @@ async function reloadTokens(): Promise<MjTokens | null> {
   if (stored) {
     _accessToken = stored.accessToken;
     _refreshToken = stored.refreshToken;
+    _clientId = stored.clientId;
   }
   return stored;
 }
@@ -133,6 +137,7 @@ async function reloadTokens(): Promise<MjTokens | null> {
  * Refresh the access token via the OAuth refresh_token grant, exactly as
  * `MidjourneyAuth._refresh` does: POST x-www-form-urlencoded to the token
  * endpoint with grant_type=refresh_token, the refresh token, and client_id.
+ * All three come from the Vault store (see ensureTokensLoaded).
  *
  * Midjourney rotates refresh tokens, so the response's new refresh_token is
  * captured and the whole set is persisted to the durable store. Returns the new
@@ -141,10 +146,11 @@ async function reloadTokens(): Promise<MjTokens | null> {
 async function refreshAccessToken(): Promise<string> {
   await ensureTokensLoaded();
   const refreshToken = _refreshToken ?? "";
-  const clientId = Deno.env.get("MJ_CLIENT_ID") ?? "";
+  const clientId = _clientId ?? "";
   if (!refreshToken || !clientId) {
     throw new MidjourneyError(
-      "Cannot refresh Midjourney token: refresh token / MJ_CLIENT_ID not set",
+      "Cannot refresh Midjourney token: refresh_token / client_id missing from " +
+        "the Vault secret 'midjourney_oauth'",
       401,
     );
   }
@@ -202,6 +208,7 @@ async function refreshAccessToken(): Promise<string> {
   await saveStoredTokens({
     accessToken,
     refreshToken: _refreshToken ?? refreshToken,
+    clientId,
     expiresAt,
   });
 
