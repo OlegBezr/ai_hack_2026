@@ -3,3 +3,6 @@
 
 # FVM Version Cache
 .fvm/
+
+# Different tmp stuff for AI agents
+tmp/

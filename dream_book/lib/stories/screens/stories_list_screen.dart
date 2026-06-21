@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -45,7 +46,7 @@ class StoriesListScreen extends ConsumerWidget {
       context.go('/stories/${story.id}');
     } catch (e) {
       if (!context.mounted) return;
-      _showSnack(context, 'Failed to create story: $e');
+      _showSnack(context, 'Failed to create story: $e', isError: true);
     }
   }
 
@@ -79,7 +80,7 @@ class StoriesListScreen extends ConsumerWidget {
       await ref.read(storiesProvider.notifier).refresh();
     } catch (e) {
       if (!context.mounted) return;
-      _showSnack(context, 'Failed to delete: $e');
+      _showSnack(context, 'Failed to delete: $e', isError: true);
     }
   }
 
@@ -159,8 +160,19 @@ class StoriesListScreen extends ConsumerWidget {
   }
 }
 
-void _showSnack(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+void _showSnack(BuildContext context, String message, {bool isError = false}) {
+  final messenger = ScaffoldMessenger.of(context);
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(message),
+      action: isError
+          ? SnackBarAction(
+              label: 'Copy',
+              onPressed: () => Clipboard.setData(ClipboardData(text: message)),
+            )
+          : null,
+    ),
+  );
 }
 
 class _EmptyState extends StatelessWidget {

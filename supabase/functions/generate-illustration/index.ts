@@ -1,15 +1,15 @@
 // POST /functions/v1/generate-illustration
 // Body: { page_id, prompt }
-// Verifies page ownership, calls Midjourney, uploads the first grid image to the
-// `illustrations` bucket, and stamps page.illustration_url. Returns
-// { illustration_url, job_id, images }.
+// Verifies page ownership, calls Midjourney, and stamps page.illustration_url
+// with the Midjourney CDN URL. Returns { illustration_url, job_id, images }.
+//
+// We do NOT re-host the image in Supabase storage: cdn.midjourney.com is behind
+// Cloudflare, which blocks server-side (non-browser TLS fingerprint) downloads
+// with a 403. The app loads the CDN URL directly (Dart's http stack is allowed).
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { ErrorResponse, getAuthenticatedUser, serviceClient } from "../_shared/auth.ts";
 import { generateImage } from "../_shared/midjourney.ts";
-import { publicUrl } from "../_shared/storage.ts";
-
-const BUCKET = "illustrations";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -55,33 +55,15 @@ Deno.serve(async (req) => {
       throw { error: "Forbidden: you do not own this story", status: 403 } as ErrorResponse;
     }
 
-    const storyId = page.story_id;
-
-    // Generate the image and download the first grid image.
+    // Generate the image. We store the Midjourney CDN URL of the first grid
+    // image directly (no re-hosting — see the header note).
     const { jobId, images } = await generateImage(prompt);
     if (images.length === 0) {
       throw { error: "Midjourney returned no images", status: 502 } as ErrorResponse;
     }
 
-    const imgRes = await fetch(images[0]);
-    if (!imgRes.ok) {
-      throw {
-        error: `Failed to download image: HTTP ${imgRes.status}`,
-        status: 502,
-      } as ErrorResponse;
-    }
-    const bytes = new Uint8Array(await imgRes.arrayBuffer());
-
-    // Upload to storage at <uid>/<story_id>/<page_id>.png.
-    const path = `${user.id}/${storyId}/${pageId}.png`;
-    const { error: uploadError } = await admin.storage
-      .from(BUCKET)
-      .upload(path, bytes, { contentType: "image/png", upsert: true });
-    if (uploadError) {
-      throw { error: `Upload failed: ${uploadError.message}`, status: 500 } as ErrorResponse;
-    }
-
-    const illustrationUrl = publicUrl(BUCKET, path);
+    const illustrationUrl = images[0];
+    console.log(`Generated illustration for page ${pageId}: ${illustrationUrl}`);
 
     const { error: updateError } = await admin
       .from("page")

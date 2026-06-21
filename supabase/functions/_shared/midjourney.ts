@@ -2,9 +2,15 @@
 // midjourney_client.dart + midjourney_auth.dart + midjourney_models.dart.
 //
 // Protocol: JSON-RPC 2.0 over streamable HTTP (the server replies with SSE).
-// Auth: a shared-account access token from MJ_ACCESS_TOKEN; on 401 we refresh
-// it using MJ_REFRESH_TOKEN + MJ_CLIENT_ID (OAuth refresh_token grant) and retry
-// once. The refreshed access token is cached in a module-level variable.
+// Auth: a shared-account token set seeded from MJ_ACCESS_TOKEN / MJ_REFRESH_TOKEN
+// / MJ_CLIENT_ID. On 401 we refresh using the refresh_token grant and retry
+// once. Midjourney ROTATES refresh tokens (each refresh invalidates the prior
+// one), so the new token set is persisted to Vault (encrypted at rest) via the
+// get_/set_midjourney_oauth wrappers — otherwise the next cold start would
+// reuse a spent refresh token and fail with `invalid_grant`. See the migration
+// `..._midjourney_vault_rotation.sql`.
+
+import { serviceClient } from "./auth.ts";
 
 const ENDPOINT = "https://mcp.midjourney.com/mcp";
 const TOKEN_ENDPOINT = "https://mcp.midjourney.com/token";
@@ -30,20 +36,95 @@ export interface MidjourneyJob {
   images: MidjourneyImage[];
 }
 
+// --- Vault token store ------------------------------------------------------
+// Rotated tokens are persisted in Supabase Vault (encrypted at rest). The
+// `vault` schema isn't reachable from service_role over PostgREST, so access
+// goes through the get_/set_midjourney_oauth SECURITY DEFINER wrappers.
+
+interface MjTokens {
+  accessToken: string;
+  refreshToken: string;
+  /** ISO timestamp, or null when the grant did not report expires_in. */
+  expiresAt: string | null;
+}
+
+/** Load the persisted token set, or null when the secret is empty/unreadable. */
+async function loadStoredTokens(): Promise<MjTokens | null> {
+  const { data, error } = await serviceClient().rpc("get_midjourney_oauth");
+  if (error) {
+    console.error("Failed to load Midjourney tokens:", error.message);
+    return null;
+  }
+  if (!data || typeof data !== "object") return null;
+
+  const t = data as Record<string, unknown>;
+  const accessToken = typeof t.access_token === "string" ? t.access_token : "";
+  const refreshToken = typeof t.refresh_token === "string" ? t.refresh_token : "";
+  if (!accessToken || !refreshToken) return null;
+
+  return {
+    accessToken,
+    refreshToken,
+    expiresAt: typeof t.expires_at === "string" ? t.expires_at : null,
+  };
+}
+
+/**
+ * Persist the rotated token set. Best-effort: a write failure is logged but not
+ * thrown, so a transient error never blocks a generation that already has a
+ * working access token.
+ */
+async function saveStoredTokens(tokens: MjTokens): Promise<void> {
+  const { error } = await serviceClient().rpc("set_midjourney_oauth", {
+    tokens: {
+      access_token: tokens.accessToken,
+      refresh_token: tokens.refreshToken,
+      expires_at: tokens.expiresAt,
+    },
+  });
+  if (error) {
+    console.error("Failed to persist Midjourney tokens:", error.message);
+  }
+}
+
 // --- module-level state ----------------------------------------------------
 
 // Mirrors the Dart client's per-instance `_id` / `_initialized`. Module-level
 // here because the edge function reuses a single client per worker.
 let _rpcId = 0;
 let _initialized = false;
-// Cached access token; seeded lazily from MJ_ACCESS_TOKEN, replaced on refresh.
+// Cached token set. Seeded lazily from the durable store (falling back to the
+// MJ_* env secrets the first time the store is empty), replaced on refresh.
 let _accessToken: string | null = null;
+let _refreshToken: string | null = null;
+let _tokensLoaded = false;
 
-function currentToken(): string {
-  if (_accessToken === null) {
+/**
+ * Ensure the in-memory token set is populated. Prefers the persisted store
+ * (which holds the latest rotated tokens); falls back to the MJ_* env secrets
+ * when the store is still empty, e.g. on first deploy or after re-seeding.
+ */
+async function ensureTokensLoaded(): Promise<void> {
+  if (_tokensLoaded) return;
+  const stored = await loadStoredTokens();
+  if (stored) {
+    _accessToken = stored.accessToken;
+    _refreshToken = stored.refreshToken;
+  } else {
     _accessToken = Deno.env.get("MJ_ACCESS_TOKEN") ?? "";
+    _refreshToken = Deno.env.get("MJ_REFRESH_TOKEN") ?? "";
   }
-  return _accessToken;
+  _tokensLoaded = true;
+}
+
+/** Force a re-read of the persisted token set, refreshing the in-memory cache. */
+async function reloadTokens(): Promise<MjTokens | null> {
+  const stored = await loadStoredTokens();
+  if (stored) {
+    _accessToken = stored.accessToken;
+    _refreshToken = stored.refreshToken;
+  }
+  return stored;
 }
 
 // --- auth: refresh (ports midjourney_auth.dart `_refresh`) -----------------
@@ -52,14 +133,18 @@ function currentToken(): string {
  * Refresh the access token via the OAuth refresh_token grant, exactly as
  * `MidjourneyAuth._refresh` does: POST x-www-form-urlencoded to the token
  * endpoint with grant_type=refresh_token, the refresh token, and client_id.
- * Caches and returns the new access token.
+ *
+ * Midjourney rotates refresh tokens, so the response's new refresh_token is
+ * captured and the whole set is persisted to the durable store. Returns the new
+ * access token.
  */
 async function refreshAccessToken(): Promise<string> {
-  const refreshToken = Deno.env.get("MJ_REFRESH_TOKEN") ?? "";
+  await ensureTokensLoaded();
+  const refreshToken = _refreshToken ?? "";
   const clientId = Deno.env.get("MJ_CLIENT_ID") ?? "";
   if (!refreshToken || !clientId) {
     throw new MidjourneyError(
-      "Cannot refresh Midjourney token: MJ_REFRESH_TOKEN / MJ_CLIENT_ID not set",
+      "Cannot refresh Midjourney token: refresh token / MJ_CLIENT_ID not set",
       401,
     );
   }
@@ -78,20 +163,48 @@ async function refreshAccessToken(): Promise<string> {
 
   if (res.status !== 200) {
     const text = await res.text();
+    // Another worker may have rotated the token while we held the old one
+    // (Midjourney invalidates the prior refresh token → invalid_grant). Re-read
+    // the store; if the refresh token changed, adopt it and let the caller retry
+    // instead of surfacing the error.
+    const reloaded = await reloadTokens();
+    if (reloaded && reloaded.refreshToken !== refreshToken) {
+      _initialized = false;
+      return reloaded.accessToken;
+    }
     throw new MidjourneyError(
       `Token refresh failed: ${res.status} ${text}`,
       res.status,
     );
   }
 
-  const json = await res.json() as { access_token?: string };
+  const json = await res.json() as {
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+  };
   const accessToken = json.access_token;
   if (!accessToken) {
     throw new MidjourneyError("Token refresh response missing access_token", 401);
   }
   _accessToken = accessToken;
-  // A fresh token means the MCP session must re-initialize.
+  // Capture the rotated refresh token (falls back to the one we just spent if
+  // the server didn't rotate). A fresh token means the MCP session must
+  // re-initialize.
+  if (json.refresh_token) _refreshToken = json.refresh_token;
   _initialized = false;
+
+  // Persist so the next ephemeral worker reuses the live tokens instead of the
+  // spent env seed. Best-effort; saveStoredTokens swallows write errors.
+  const expiresAt = json.expires_in
+    ? new Date(Date.now() + json.expires_in * 1000).toISOString()
+    : null;
+  await saveStoredTokens({
+    accessToken,
+    refreshToken: _refreshToken ?? refreshToken,
+    expiresAt,
+  });
+
   return accessToken;
 }
 
@@ -167,7 +280,8 @@ async function rpcWithRetry(
   method: string,
   params: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
-  let token = currentToken();
+  await ensureTokensLoaded();
+  let token = _accessToken ?? "";
   let { status, message, id } = await rpc(token, method, params);
 
   if (status === 401) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
@@ -63,9 +64,19 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
     }
   }
 
-  void _snack(String msg) {
+  void _snack(String msg, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        action: isError
+            ? SnackBarAction(
+                label: 'Copy',
+                onPressed: () => Clipboard.setData(ClipboardData(text: msg)),
+              )
+            : null,
+      ),
+    );
   }
 
   Future<void> _saveTitle() async {
@@ -79,7 +90,7 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
       ref.read(storiesProvider.notifier).refresh();
       _snack('Title saved');
     } catch (e) {
-      _snack('Failed to save title: $e');
+      _snack('Failed to save title: $e', isError: true);
     } finally {
       if (mounted) setState(() => _savingTitle = false);
     }
@@ -96,7 +107,7 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
       await _repo.createPage(story.id, nextPos, '');
       await _load();
     } catch (e) {
-      _snack('Failed to add page: $e');
+      _snack('Failed to add page: $e', isError: true);
     }
   }
 
@@ -122,7 +133,7 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
       await _repo.deletePage(page.id);
       await _load();
     } catch (e) {
-      _snack('Failed to delete page: $e');
+      _snack('Failed to delete page: $e', isError: true);
     }
   }
 
@@ -141,7 +152,7 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
       await _repo.updatePage(a.id, position: b.position);
       await _load();
     } catch (e) {
-      _snack('Failed to reorder: $e');
+      _snack('Failed to reorder: $e', isError: true);
     }
   }
 
@@ -272,7 +283,7 @@ class _PageEditor extends StatefulWidget {
   final VoidCallback onDelete;
   final VoidCallback onMoveUp;
   final VoidCallback onMoveDown;
-  final void Function(String) snack;
+  final void Function(String, {bool isError}) snack;
 
   @override
   State<_PageEditor> createState() => _PageEditorState();
@@ -310,7 +321,7 @@ class _PageEditorState extends State<_PageEditor> {
       await widget.repo.updatePage(widget.page.id, text: _textController.text);
       widget.snack('Page saved');
     } catch (e) {
-      widget.snack('Failed to save page: $e');
+      widget.snack('Failed to save page: $e', isError: true);
     } finally {
       if (mounted) setState(() => _savingText = false);
     }
@@ -358,7 +369,7 @@ class _PageEditorState extends State<_PageEditor> {
       setState(() => _illustrationUrl = url);
       widget.snack('Illustration generated');
     } catch (e) {
-      widget.snack('Illustration failed: $e');
+      widget.snack('Illustration failed: $e', isError: true);
     } finally {
       if (mounted) setState(() => _generatingImage = false);
     }
@@ -376,7 +387,7 @@ class _PageEditorState extends State<_PageEditor> {
       setState(() => _audioUrl = url);
       widget.snack('Audio generated');
     } catch (e) {
-      widget.snack('Audio failed: $e');
+      widget.snack('Audio failed: $e', isError: true);
     } finally {
       if (mounted) setState(() => _generatingAudio = false);
     }
@@ -389,7 +400,7 @@ class _PageEditorState extends State<_PageEditor> {
       await _audioPlayer.setUrl(url);
       await _audioPlayer.play();
     } catch (e) {
-      widget.snack('Playback failed: $e');
+      widget.snack('Playback failed: $e', isError: true);
     }
   }
 
