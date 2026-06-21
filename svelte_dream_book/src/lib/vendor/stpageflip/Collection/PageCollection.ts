@@ -252,23 +252,6 @@ export abstract class PageCollection {
     }
 
     /**
-     * Total number of spreads in the current orientation.
-     * (Added in our fork — used to detect the cover / back-cover end spreads
-     * for the "centered single page" effect.)
-     */
-    public getSpreadCount(): number {
-        return this.getSpread().length;
-    }
-
-    /**
-     * Number of pages in the spread at [index] (1 = a lone cover/back page).
-     */
-    public getSpreadSize(index: number): number {
-        const spread = this.getSpread()[index];
-        return spread ? spread.length : 0;
-    }
-
-    /**
      * Set new spread index as current
      *
      * @param {number} newIndex - new spread index

@@ -1,7 +1,7 @@
 // @ts-nocheck -- vendored third-party (patched StPageFlip); not type-checked here.
 import { Orientation, Render } from './Render';
 import { PageFlip } from '../PageFlip';
-import { FlipDirection, FlippingState } from '../Flip/Flip';
+import { FlipDirection } from '../Flip/Flip';
 import { PageDensity, PageOrientation } from '../Page/Page';
 import { HTMLPage } from '../Page/HTMLPage';
 import { Helper } from '../Helper';
@@ -350,48 +350,6 @@ export class HTMLRender extends Render {
                 this.drawHardInnerShadow();
             }
         }
-
-        this.applyCenterOffset();
-    }
-
-    /**
-     * (Fork addition) Keep a lone cover / back-cover page visually centered.
-     *
-     * StPageFlip reserves a two-page-wide area and paints the front cover into
-     * the right half and the back cover into the left half. Centering that lone
-     * page is only safe while the book is idle: during a cover flip the renderer
-     * is also drawing adjacent pages against the unshifted spine, and translating
-     * the whole page block creates a visible gutter between the cover-side page
-     * and its neighbor.
-     */
-    private applyCenterOffset(): void {
-        if (this.orientation === Orientation.PORTRAIT) {
-            this.element.style.transform = '';
-            return;
-        }
-
-        const rect = this.getRect();
-        if (!rect) return;
-
-        const pages = this.app.getPageCollection();
-        if (!pages) return;
-
-        if (this.app.getState() !== FlippingState.READ) {
-            this.element.style.transform = '';
-            return;
-        }
-
-        const current = pages.getCurrentSpreadIndex();
-        if (pages.getSpreadSize(current) !== 1) {
-            this.element.style.transform = '';
-            return;
-        }
-
-        const half = rect.pageWidth / 2;
-        const last = pages.getSpreadCount() - 1;
-        const offset = current <= 0 ? -half : current >= last ? half : 0;
-
-        this.element.style.transform = offset ? `translateX(${offset}px)` : '';
     }
 
     private clear(): void {

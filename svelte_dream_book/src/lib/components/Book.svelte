@@ -21,7 +21,6 @@
 
   let bookEl: HTMLDivElement;
   let pageFlip: PageFlip | undefined;
-  let resizeObserver: ResizeObserver | undefined;
 
   const textStyle = $derived(proseStyle(style));
   const leafBg = $derived(style.backgroundColor ?? '#FFF8E7');
@@ -55,28 +54,9 @@
       prev: () => pageFlip?.flipPrev(),
       pageCount: pageFlip.getPageCount()
     });
-
-    // The flip engine only recomputes its geometry (page width, spread origin,
-    // and the lone-cover centering offset) on a window `resize` event. But the
-    // book's container resizes on its own in the reader — the flex column
-    // settling after mount, and the NarrationBar swapping between
-    // "No narration" / playing / loading heights — with no window resize. When
-    // that happens the engine keeps a stale `pageWidth`, so the spread no
-    // longer fits its box and (most visibly) the single front/back cover is
-    // sized and centered from the old width, leaving a lop-sided gap. Re-run
-    // the engine's own measurement whenever the book element itself resizes —
-    // this is exactly what its window-resize handler does, just keyed off the
-    // element instead of the window.
-    // `update()` only recomputes the engine's bounds — it does not resize the
-    // observed element — so this can't cause a feedback loop. (This mirrors the
-    // engine's own window-resize handler, which calls update() directly too.)
-    resizeObserver = new ResizeObserver(() => pageFlip?.getRender()?.update());
-    resizeObserver.observe(bookEl);
   });
 
   onDestroy(() => {
-    resizeObserver?.disconnect();
-    resizeObserver = undefined;
     pageFlip?.destroy();
     pageFlip = undefined;
   });
